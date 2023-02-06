@@ -1,0 +1,28 @@
+[package]
+name = "polytone-note"
+authors = ["ekez <ekez@withoutdoing.com>"]
+edition = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# disables #[entry_point] (i.e. instantiate/execute/query) export
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+polytone = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
