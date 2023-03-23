@@ -23,6 +23,7 @@ cw-utils = { workspace = true }
 cw2 = { workspace = true }
 polytone = { workspace = true }
 polytone-proxy = { workspace = true }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

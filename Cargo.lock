@@ -541,6 +541,7 @@ dependencies = [
  "cw2",
  "polytone",
  "polytone-proxy",
+ "sha2 0.10.6",
  "thiserror",
 ]
 

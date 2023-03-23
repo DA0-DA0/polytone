@@ -72,7 +72,11 @@ pub fn execute(
                     Msg::Execute { msgs } => {
                         let (instantiate, proxy) = if let Some(proxy) = SENDER_TO_PROXY.may_load(
                             deps.storage,
-                            (connection_id, counterparty_port, sender.clone()),
+                            (
+                                connection_id.clone(),
+                                counterparty_port.clone(),
+                                sender.clone(),
+                            ),
                         )? {
                             (None, proxy)
                         } else {
@@ -81,7 +85,7 @@ pub fn execute(
                             let code_id = PROXY_CODE_ID.load(deps.storage)?;
                             let CodeInfoResponse { checksum, .. } =
                                 deps.querier.query_wasm_code_info(code_id)?;
-                            let salt = Binary::from(sender.as_bytes());
+                            let salt = salt(&connection_id, &counterparty_port, &sender);
                             let proxy = deps.api.addr_humanize(&instantiate2_address(
                                 &checksum, &contract, &salt,
                             )?)?;
@@ -117,7 +121,55 @@ pub fn execute(
     }
 }
 
+/// `local_channel` is not attacker controlled and protects from
+/// collision from an attacker generated duplicate
+/// chain. `remote_channel` ensures that two different modules on the
+/// same chain produce different addresses for the same
+/// `remote_sender`.
+fn salt(local_connection: &str, counterparty_port: &str, remote_sender: &str) -> Binary {
+    use sha2::{Digest, Sha512};
+    let hash = Sha512::default()
+        .chain_update(local_connection.as_bytes())
+        .chain_update(counterparty_port.as_bytes())
+        .chain_update(remote_sender.as_bytes())
+        .finalize();
+    Binary::from(hash.as_slice())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {}
+}
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{instantiate2_address, CanonicalAddr, HexBinary};
+
+    use super::salt;
+
+    fn gen_address(
+        local_connection: &str,
+        counterparty_port: &str,
+        remote_sender: &str,
+    ) -> CanonicalAddr {
+        let checksum =
+            HexBinary::from_hex("13a1fc994cc6d1c81b746ee0c0ff6f90043875e0bf1d9be6b7d779fc978dc2a5")
+                .unwrap();
+        let creator = CanonicalAddr::from((0..90).map(|_| 9).collect::<Vec<u8>>().as_slice());
+
+        let salt = salt(local_connection, counterparty_port, remote_sender);
+        assert!(salt.len() <= 64);
+        instantiate2_address(checksum.as_slice(), &creator, &salt).unwrap()
+    }
+
+    /// Addresses can be generated, and changing inputs changes
+    /// output.
+    #[test]
+    fn test_address_generation() {
+        let one = gen_address("c1", "c1", "c1");
+        let two = gen_address("c2", "c1", "c1");
+        let three = gen_address("c1", "c2", "c1");
+        let four = gen_address("c1", "c1", "c2");
+        assert!(one != two && two != three && three != four)
+    }
 }
