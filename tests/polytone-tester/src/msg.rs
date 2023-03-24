@@ -15,9 +15,16 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(CallbackHistoryResponse)]
     History {},
+    #[returns(HelloHistoryResponse)]
+    HelloHistory {},
 }
 
 #[cw_serde]
 pub struct CallbackHistoryResponse {
     pub history: Vec<polytone::callback::CallbackMessage>,
+}
+
+#[cw_serde]
+pub struct HelloHistoryResponse {
+    pub history: Vec<String>,
 }

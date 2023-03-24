@@ -9,44 +9,57 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
-	"github.com/stretchr/testify/require"
 )
 
 type Account struct {
-	PrivKey cryptotypes.PrivKey
-	PubKey  cryptotypes.PubKey
-	Address sdk.AccAddress
-	Acc     authtypes.AccountI
-	Chain   *ibctesting.TestChain // lfg garbage collection!!
+	PrivKey    cryptotypes.PrivKey
+	PubKey     cryptotypes.PubKey
+	Address    sdk.AccAddress
+	Acc        authtypes.AccountI
+	Chain      *ibctesting.TestChain // lfg garbage collection!!
+	SuiteChain *Chain
 }
 
-// Generates a new account on the provided chain with 100_000_000
-// tokens of the chain's bonding denom.
-func GenAccount(t *testing.T, chain *ibctesting.TestChain) Account {
-	privkey := secp256k1.GenPrivKey()
+func genAccount(t *testing.T, privkey cryptotypes.PrivKey, suiteChain *Chain) Account {
+	chain := suiteChain.Chain
 	pubkey := privkey.PubKey()
 	addr := sdk.AccAddress(pubkey.Address())
 
-	bondDenom := chain.App.StakingKeeper.BondDenom(chain.GetContext())
-	coins := sdk.NewCoins(sdk.NewCoin(bondDenom, sdk.NewInt(100000000)))
-
-	err := chain.App.BankKeeper.MintCoins(chain.GetContext(), minttypes.ModuleName, coins)
-	require.NoError(t, err)
-
-	err = chain.App.BankKeeper.SendCoinsFromModuleToAccount(chain.GetContext(), minttypes.ModuleName, addr, coins)
-	require.NoError(t, err)
+	suiteChain.MintBondedDenom(t, addr)
 
 	accountNumber := chain.App.AccountKeeper.GetNextAccountNumber(chain.GetContext())
 	baseAcc := authtypes.NewBaseAccount(addr, pubkey, accountNumber, 0)
 	chain.App.AccountKeeper.SetAccount(chain.GetContext(), baseAcc)
 
 	return Account{
-		PrivKey: privkey,
-		PubKey:  pubkey,
-		Address: addr,
-		Acc:     baseAcc,
-		Chain:   chain,
+		PrivKey:    privkey,
+		PubKey:     pubkey,
+		Address:    addr,
+		Acc:        baseAcc,
+		Chain:      chain,
+		SuiteChain: suiteChain,
+	}
+}
+
+// Generates a new account on the provided chain with 100_000_000
+// tokens of the chain's bonding denom.
+func GenAccount(t *testing.T, suiteChain *Chain) Account {
+	privkey := secp256k1.GenPrivKey()
+	return genAccount(t, privkey, suiteChain)
+}
+
+func (a *Account) KeplrChainDropdownSelect(t *testing.T, selection *Chain) Account {
+	if ac := selection.Chain.App.AccountKeeper.GetAccount(selection.Chain.GetContext(), a.Address); ac != nil {
+		return Account{
+			PrivKey:    a.PrivKey,
+			PubKey:     a.PubKey,
+			Address:    a.Address,
+			Acc:        ac,
+			Chain:      selection.Chain,
+			SuiteChain: selection,
+		}
+	} else {
+		return genAccount(t, a.PrivKey, selection)
 	}
 }
 

@@ -21,7 +21,8 @@ use crate::ack::unmarshal_ack;
 pub struct CallbackMessage {
     /// Initaitor on the controller chain.
     pub initiator: Addr,
-    /// Message sent by the initaitor.
+    /// Message sent by the initaitor. This _must_ be base64 encoded
+    /// or execution will fail.
     pub initiator_msg: Binary,
     /// Data from the host chain.
     pub result: Callback,
