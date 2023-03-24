@@ -125,6 +125,8 @@ func TestSameAddressDifferentChains(t *testing.T) {
 	// this scenerio at will.
 	duplicate := friend.KeplrChainDropdownSelect(t, &suite.ChainC)
 
+	require.Equal(t, friend.Address.String(), duplicate.Address.String())
+
 	hello := `{"hello": { "data": "" }}`
 	helloMsg := w.CosmosMsg{
 		Wasm: &w.WasmMsg{

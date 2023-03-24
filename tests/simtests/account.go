@@ -49,12 +49,12 @@ func GenAccount(t *testing.T, suiteChain *Chain) Account {
 }
 
 func (a *Account) KeplrChainDropdownSelect(t *testing.T, selection *Chain) Account {
-	if ac := selection.Chain.App.AccountKeeper.GetAccount(selection.Chain.GetContext(), a.Address); ac != nil {
+	if acc := selection.Chain.App.AccountKeeper.GetAccount(selection.Chain.GetContext(), a.Address); acc != nil {
 		return Account{
 			PrivKey:    a.PrivKey,
 			PubKey:     a.PubKey,
 			Address:    a.Address,
-			Acc:        ac,
+			Acc:        acc,
 			Chain:      selection.Chain,
 			SuiteChain: selection,
 		}
