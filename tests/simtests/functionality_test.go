@@ -2,6 +2,7 @@ package simtests
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"testing"
 
 	w "github.com/CosmWasm/wasmvm/types"
@@ -17,13 +18,7 @@ import (
 func TestFunctionality(t *testing.T) {
 	suite := NewSuite(t)
 
-	path := SetupPath(
-		suite.Coordinator,
-		suite.ChainA.Chain,
-		suite.ChainB.Chain,
-		suite.ChainA.Note,
-		suite.ChainB.Voice,
-	)
+	path := suite.SetupPath(&suite.ChainA, &suite.ChainB)
 
 	// Execute two messages, the first of which uses
 	// polytone-tester to set some data in the transaction
@@ -31,15 +26,14 @@ func TestFunctionality(t *testing.T) {
 	// rewards receiver address to the voice address on the remote
 	// chain.
 
-	accountA := GenAccount(t, suite.ChainA.Chain)
+	accountA := GenAccount(t, &suite.ChainA)
 	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
 	dataCosmosMsg := w.CosmosMsg{
 		Wasm: &w.WasmMsg{
 			Execute: &w.ExecuteMsg{
 				ContractAddr: suite.ChainB.Tester.String(),
-				// base64.StdEncoding.EncodeToString()
-				Msg:   []byte(dataMsg),
-				Funds: []w.Coin{},
+				Msg:          []byte(dataMsg),
+				Funds:        []w.Coin{},
 			},
 		},
 	}
@@ -52,39 +46,11 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	encodedMsg := base64.StdEncoding.EncodeToString([]byte("the data is hello base64 encoded"))
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 
-	wasmMsg := accountA.WasmExecute(&suite.ChainA.Note, NoteExecute{
-		Execute: &NoteExecuteMsg{
-			Msgs:           []any{dataCosmosMsg, noDataCosmosMsg},
-			TimeoutSeconds: 100,
-			Callback: &CallbackRequest{
-				Receiver: suite.ChainA.Tester.String(),
-				Msg:      encodedMsg,
-			},
-		},
-	})
-	t.Log(wasmMsg)
-	_, err := accountA.Send(t, wasmMsg)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = suite.Coordinator.RelayAndAckPendingPackets(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	callbackHistory := QueryHistory(suite.ChainA.Chain, suite.ChainA.Tester)
-	require.Equal(t, []CallbackMessage{
-		CallbackMessage{
-			Initiator:    accountA.Address.String(),
-			InitiatorMsg: encodedMsg,
-			Result: Callback{
-				Success: []string{"aGVsbG8K", ""},
-			},
-		},
-	}, callbackHistory)
+	require.Equal(t, Callback{
+		Success: []string{"aGVsbG8K", ""},
+	}, callback)
 
 	balanceQuery := w.QueryRequest{
 		Bank: &w.BankQuery{
@@ -95,35 +61,95 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	wasmMsg = accountA.WasmExecute(&suite.ChainA.Note, NoteExecute{
-		Query: &NoteQuery{
-			Msgs:           []any{balanceQuery},
-			TimeoutSeconds: 100,
-			Callback: CallbackRequest{
-				Receiver: suite.ChainA.Tester.String(),
-				Msg:      "",
+	history := QueryCallbackHistory(suite.ChainB.Chain, suite.ChainB.Tester)
+	t.Log(history)
+	testerQuery := TesterQuery{
+		History: &Empty{},
+	}
+	queryBytes, err := json.Marshal(testerQuery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(queryBytes))
+
+	historyQuery := w.QueryRequest{
+		Wasm: &w.WasmQuery{
+			Smart: &w.SmartQuery{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          queryBytes,
 			},
 		},
-	})
-	t.Log(wasmMsg)
-	_, err = accountA.Send(t, wasmMsg)
+	}
+
+	callback, err = suite.RoundtripQuery(t, path, &accountA, []any{balanceQuery, historyQuery})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = suite.Coordinator.RelayAndAckPendingPackets(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	callbackHistory = QueryHistory(suite.ChainA.Chain, suite.ChainA.Tester)
 	require.Equal(t,
-		CallbackMessage{
-			Initiator:    accountA.Address.String(),
-			InitiatorMsg: "",
-			Result: Callback{
-				Success: []string{base64.StdEncoding.EncodeToString([]byte(`{"amount":{"denom":"stake","amount":"100"}}`))}, // contracts get made with 100 coins.
-			},
-		}, callbackHistory[1])
+		Callback{
+			Success: []string{
+				base64.StdEncoding.EncodeToString([]byte(`{"amount":{"denom":"stake","amount":"100"}}`)), // contracts get made with 100 coins.
+				base64.StdEncoding.EncodeToString([]byte(`{"history":[]}`))},
+		}, callback)
 
+}
+
+// Generates two addresses from the same private key on chains B and
+// C, then sends a message from each accounts proxy. The two addresses
+// will have the same string representation, as the two chains have
+// the same prefix, and the same local connection and channel ID. They
+// also have the same remote port, as they are the first instantation
+// of the same bytecode on chains with the same prefix.
+//
+// If these two different accounts get different addreses on chain A,
+// it means that the contract is correctly distinguishing them based
+// on some combination of local `(connection_id, channel_id)`, as
+// those are the only parts of the messages that differ.
+//
+// Later tests will show that the contract does not change the address
+// on chain A if a channel closes, which together means that the
+// contract is correctly namespacing addresses based on connection_id.
+func TestSameAddressDifferentChains(t *testing.T) {
+	suite := NewSuite(t)
+
+	pathCA := suite.SetupPath(&suite.ChainC, &suite.ChainA)
+	pathBA := suite.SetupPath(&suite.ChainB, &suite.ChainA)
+
+	friend := GenAccount(t, &suite.ChainB)
+
+	// this follows the rules of Cosmos to induce the scenerio,
+	// though signatures are not required for a message to be
+	// sent from a malicious note contract, and anyone can
+	// duplicate a chain, so you can imagine an attacker inducing
+	// this scenerio at will.
+	duplicate := friend.KeplrChainDropdownSelect(t, &suite.ChainC)
+
+	require.Equal(t, friend.Address.String(), duplicate.Address.String())
+
+	hello := `{"hello": { "data": "" }}`
+	helloMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainA.Tester.String(),
+				Msg:          []byte(hello),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	c, err := suite.RoundtripExecute(t, pathCA, &duplicate, []any{helloMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := suite.RoundtripExecute(t, pathBA, &friend, []any{helloMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, Callback{Success: []string{""}}, c)
+	require.Equal(t, c, b)
+
+	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)
+	require.Len(t, history, 2)
+	require.NotEqual(t, history[0], history[1])
 }

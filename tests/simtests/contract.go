@@ -64,12 +64,19 @@ type Callback struct {
 	Error   string   `json:"error,omitempty"`
 }
 
+type Empty struct{}
+
 type TesterQuery struct {
-	History NoteInstantiate `json:"history"`
+	History      *Empty `json:"history,omitempty"`
+	HelloHistory *Empty `json:"hello_history,omitempty"`
 }
 
 type HistoryResponse struct {
 	History []CallbackMessage `json:"history"`
+}
+
+type HelloHistoryResponse struct {
+	History []string `json:"history"`
 }
 
 func Instantiate(t *testing.T, chain *ibctesting.TestChain, codeId uint64, msg any) sdk.AccAddress {
@@ -80,9 +87,9 @@ func Instantiate(t *testing.T, chain *ibctesting.TestChain, codeId uint64, msg a
 	return chain.InstantiateContract(codeId, instantiate)
 }
 
-func QueryHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []CallbackMessage {
+func QueryCallbackHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []CallbackMessage {
 	bytes, err := json.Marshal(TesterQuery{
-		History: NoteInstantiate{},
+		History: &Empty{},
 	})
 	if err != nil {
 		panic(err)
@@ -92,6 +99,22 @@ func QueryHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []Callback
 		panic(err)
 	}
 	var response HistoryResponse
+	json.Unmarshal(res, &response)
+	return response.History
+}
+
+func QueryHelloHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []string {
+	bytes, err := json.Marshal(TesterQuery{
+		HelloHistory: &Empty{},
+	})
+	if err != nil {
+		panic(err)
+	}
+	res, err := chain.App.WasmKeeper.QuerySmart(chain.GetContext(), tester, bytes)
+	if err != nil {
+		panic(err)
+	}
+	var response HelloHistoryResponse
 	json.Unmarshal(res, &response)
 	return response.History
 }
