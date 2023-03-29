@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	w "github.com/CosmWasm/wasmvm/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,6 +48,9 @@ func TestFunctionality(t *testing.T) {
 	}
 
 	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	require.Equal(t, Callback{
 		Success: []string{"aGVsbG8K", ""},
@@ -152,4 +156,93 @@ func TestSameAddressDifferentChains(t *testing.T) {
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)
 	require.Len(t, history, 2)
 	require.NotEqual(t, history[0], history[1])
+}
+
+// TODO: Finished it once we have a way to retrieve proxy addr
+func TestSuccessfulBankMsg(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupPath(&suite.ChainA, &suite.ChainB)
+
+	// Create an account on the other chain
+	accountA := GenAccount(t, &suite.ChainA)
+	hello := `{"hello": {"data": "aGVsbG8K"}}`
+	helloMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(hello),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	_, err := suite.RoundtripExecute(t, path, &accountA, []any{helloMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Get account address
+	history := QueryHelloHistory(suite.ChainB.Chain, suite.ChainB.Tester)
+	proxyAddr := history[0]
+
+	// Mint some tokens to the proxy address
+	suite.ChainB.MintBondedDenom(t, sdk.AccAddress(proxyAddr))
+
+	// Simple bank msg
+	bankMsg := w.CosmosMsg{
+		Bank: &w.BankMsg{
+			Send: &w.SendMsg{
+				ToAddress: suite.ChainB.Note.String(),
+				Amount: []w.Coin{
+					{Denom: suite.ChainB.Chain.App.StakingKeeper.BondDenom(suite.ChainB.Chain.GetContext()), Amount: "10000"},
+				},
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{bankMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("callback = %v", callback)
+}
+
+// TODO: This function is erroring (Working)
+// But we are waiting for the "TestSuccessfulBankMsg" test so we can be sure
+// that the bank msgs are working as expected
+func TestFailureMsg(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	hello := `{"hello": {}}`
+	helloMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainA.Tester.String(),
+				Msg:          []byte(hello),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	failedBankMsg := w.CosmosMsg{
+		Bank: &w.BankMsg{
+			Send: &w.SendMsg{
+				ToAddress: suite.ChainB.Note.String(),
+				Amount: []w.Coin{
+					{Denom: "stake", Amount: "999999999"},
+				},
+			},
+		},
+	}
+
+	// failed = {Success:[] Error:codespace: wasm, code: 5}
+	// https://github.com/CosmWasm/wasmd/blob/7e936c7fffb6f489ed9ecb797a7a2823a032b10b/x/wasm/types/errors.go
+	failed, _ := suite.RoundtripExecute(t, path, &accountA, []any{helloMsg, failedBankMsg})
+	require.Equal(t, Callback{Error: "codespace: wasm, code: 5"}, failed)
+
+	history := QueryHelloHistory(suite.ChainB.Chain, suite.ChainA.Tester)
+	require.Len(t, history, 0)
 }
