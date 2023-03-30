@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum HandshakeError {
     #[error("protocol missmatch, got {actual}, expected {expected}")]
     ProtocolMissmatch { actual: String, expected: String },

@@ -2,15 +2,28 @@ use cosmwasm_std::{
     from_binary, Binary, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse,
 };
 
-use super::{error::HandshakeError, voice_version};
+use super::{error::HandshakeError, note_version, voice_version};
 
+/// Performs the open step of the IBC handshake for a voice module.
+///
+/// # Arguments
+///
+/// - `extensions` the Polytone extensions supported by the caller.
+///   Extensions are explained in detail in the polytone spec.
+/// - `msg` the message received to open the channel.
 pub fn open(
     msg: IbcChannelOpenMsg,
     extensions: &[&str],
 ) -> Result<IbcChannelOpenResponse, HandshakeError> {
-    super::open(msg, extensions, voice_version())
+    super::open(msg, extensions, voice_version(), note_version())
 }
 
+/// Performs the connect step of the IBC handshake for a voice module.
+///
+/// # Arguments
+///
+/// - `extensions` the Polytone extensions supported by the caller.
+///   Extensions are explained in detail in the polytone spec.
 pub fn connect(msg: IbcChannelConnectMsg, extensions: &[&str]) -> Result<(), HandshakeError> {
     match msg {
         IbcChannelConnectMsg::OpenAck {
