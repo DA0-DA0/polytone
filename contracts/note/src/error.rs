@@ -7,7 +7,7 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error(transparent)]
-    Polytone(#[from] polytone::ibc::OrderVersionError),
+    Handshake(#[from] polytone::handshake::error::HandshakeError),
 
     #[error("contract is already paired with port ({pair_port}) on connection ({pair_connection}), got port ({suggested_port}) on connection ({suggested_connection})")]
     AlreadyPaired {

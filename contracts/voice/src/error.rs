@@ -14,7 +14,7 @@ pub enum ContractError {
     Instantiate2(#[from] Instantiate2AddressError),
 
     #[error(transparent)]
-    Polytone(#[from] polytone::ibc::OrderVersionError),
+    Handshake(#[from] polytone::handshake::error::HandshakeError),
 
     #[error("only the contract itself may call this method")]
     NotSelf,

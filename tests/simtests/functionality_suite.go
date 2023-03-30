@@ -61,7 +61,7 @@ func NewSuite(t *testing.T) Suite {
 func ChannelConfig(port string) *sdkibctesting.ChannelConfig {
 	return &sdkibctesting.ChannelConfig{
 		PortID:  port,
-		Version: "polytone",
+		Version: "polytone-1",
 		Order:   channeltypes.UNORDERED,
 	}
 }

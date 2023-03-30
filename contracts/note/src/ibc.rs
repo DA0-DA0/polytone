@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    DepsMut, Env, IbcBasicResponse, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg,
-    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, Reply, Response, SubMsg, SubMsgResult,
+    DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
+    IbcChannelOpenResponse, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
+    IbcReceiveResponse, Never, Reply, Response, SubMsg, SubMsgResult,
 };
-use polytone::{callback, ibc::validate_order_and_version};
+use polytone::{callback, handshake::note};
 
 use crate::{
     error::ContractError,
@@ -18,22 +18,23 @@ pub fn ibc_channel_open(
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
-    let (channel, counterparty_version) = icom(msg);
-    validate_order_and_version(&channel, counterparty_version.as_deref())?;
+    let response = note::open(&msg, &["JSON-CosmosMsg"])?;
     match CONNECTION_REMOTE_PORT.may_load(deps.storage)? {
         Some((conn, port)) => {
-            if channel.counterparty_endpoint.port_id != port || channel.connection_id != conn {
+            if msg.channel().counterparty_endpoint.port_id != port
+                || msg.channel().connection_id != conn
+            {
                 Err(ContractError::AlreadyPaired {
-                    suggested_connection: channel.connection_id,
-                    suggested_port: channel.counterparty_endpoint.port_id,
+                    suggested_connection: msg.channel().connection_id.clone(),
+                    suggested_port: msg.channel().counterparty_endpoint.port_id.clone(),
                     pair_connection: conn,
                     pair_port: port,
                 })
             } else {
-                Ok(None)
+                Ok(response)
             }
         }
-        None => Ok(None),
+        None => Ok(response),
     }
 }
 
@@ -43,16 +44,18 @@ pub fn ibc_channel_connect(
     _env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    let (channel, counterparty_version) = iccm(msg);
-    validate_order_and_version(&channel, counterparty_version.as_deref())?;
+    note::connect(&msg, &["JSON-CosmosMsg"])?;
     CONNECTION_REMOTE_PORT.save(
         deps.storage,
-        &(channel.connection_id, channel.counterparty_endpoint.port_id),
+        &(
+            msg.channel().connection_id.clone(),
+            msg.channel().counterparty_endpoint.port_id.clone(),
+        ),
     )?;
-    CHANNEL.save(deps.storage, &channel.endpoint.channel_id)?;
+    CHANNEL.save(deps.storage, &msg.channel().endpoint.channel_id)?;
     Ok(IbcBasicResponse::new()
         .add_attribute("method", "ibc_channel_connect")
-        .add_attribute("channel_id", channel.endpoint.channel_id))
+        .add_attribute("channel_id", &msg.channel().endpoint.channel_id))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -114,25 +117,5 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
             .add_attribute("callback_error", sequence.to_string())
             .add_attribute("error", e)),
         SubMsgResult::Ok(_) => unreachable!("callbacks reply_on_error"),
-    }
-}
-
-fn icom(msg: IbcChannelOpenMsg) -> (IbcChannel, Option<String>) {
-    match msg {
-        IbcChannelOpenMsg::OpenInit { channel } => (channel, None),
-        IbcChannelOpenMsg::OpenTry {
-            channel,
-            counterparty_version,
-        } => (channel, Some(counterparty_version)),
-    }
-}
-
-fn iccm(msg: IbcChannelConnectMsg) -> (IbcChannel, Option<String>) {
-    match msg {
-        IbcChannelConnectMsg::OpenAck {
-            channel,
-            counterparty_version,
-        } => (channel, Some(counterparty_version)),
-        IbcChannelConnectMsg::OpenConfirm { channel } => (channel, None),
     }
 }

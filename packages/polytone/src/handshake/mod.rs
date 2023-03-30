@@ -28,7 +28,7 @@ pub fn voice_version() -> String {
 ///   Extensions are explained in detail in the polytone spec.
 /// - `msg` the message received to open the channel.
 fn open(
-    msg: IbcChannelOpenMsg,
+    msg: &IbcChannelOpenMsg,
     extensions: &[&str],
     version: String,
     counterparty_version: String,
@@ -37,7 +37,7 @@ fn open(
         IbcChannelOpenMsg::OpenInit { channel } => {
             if channel.version != POLYTONE_VERSION {
                 Err(HandshakeError::ProtocolMissmatch {
-                    actual: channel.version,
+                    actual: channel.version.clone(),
                     expected: POLYTONE_VERSION.to_string(),
                 })
             } else if channel.order != IbcOrder::Unordered {
@@ -50,7 +50,7 @@ fn open(
             channel,
             counterparty_version: cv,
         } => {
-            if cv != counterparty_version {
+            if *cv != counterparty_version {
                 Err(HandshakeError::WrongCounterparty)
             } else if channel.order != IbcOrder::Unordered {
                 Err(HandshakeError::UnUnordered)

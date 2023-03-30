@@ -5,8 +5,8 @@ use cosmwasm_std::{
     IbcOrder,
 };
 
-type OpenFn = fn(IbcChannelOpenMsg, &[&str]) -> Result<IbcChannelOpenResponse, HandshakeError>;
-type ConnectFn = fn(IbcChannelConnectMsg, &[&str]) -> Result<(), HandshakeError>;
+type OpenFn = fn(&IbcChannelOpenMsg, &[&str]) -> Result<IbcChannelOpenResponse, HandshakeError>;
+type ConnectFn = fn(&IbcChannelConnectMsg, &[&str]) -> Result<(), HandshakeError>;
 
 struct MockHandshake {
     pub init: OpenFn,
@@ -46,7 +46,7 @@ impl MockHandshake {
         );
 
         let v = (self.init)(
-            IbcChannelOpenMsg::OpenInit {
+            &IbcChannelOpenMsg::OpenInit {
                 channel: channel.clone(),
             },
             start_extensions,
@@ -58,7 +58,7 @@ impl MockHandshake {
         channel.connection_id = connection_end.clone();
 
         let v = (self.try_)(
-            IbcChannelOpenMsg::OpenTry {
+            &IbcChannelOpenMsg::OpenTry {
                 channel: channel.clone(),
                 counterparty_version: channel.version.clone(),
             },
@@ -71,7 +71,7 @@ impl MockHandshake {
         channel.connection_id = connection_start;
 
         (self.ack)(
-            IbcChannelConnectMsg::OpenAck {
+            &IbcChannelConnectMsg::OpenAck {
                 channel: channel.clone(),
                 counterparty_version: channel.version.clone(),
             },
@@ -81,7 +81,7 @@ impl MockHandshake {
         channel.connection_id = connection_end;
 
         (self.confirm)(
-            IbcChannelConnectMsg::OpenConfirm {
+            &IbcChannelConnectMsg::OpenConfirm {
                 channel: channel.clone(),
             },
             end_extensions,
