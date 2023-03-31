@@ -18,7 +18,7 @@ import (
 func TestFunctionality(t *testing.T) {
 	suite := NewSuite(t)
 
-	path := suite.SetupPath(&suite.ChainA, &suite.ChainB)
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
 
 	// Execute two messages, the first of which uses
 	// polytone-tester to set some data in the transaction
@@ -113,8 +113,8 @@ func TestFunctionality(t *testing.T) {
 func TestSameAddressDifferentChains(t *testing.T) {
 	suite := NewSuite(t)
 
-	pathCA := suite.SetupPath(&suite.ChainC, &suite.ChainA)
-	pathBA := suite.SetupPath(&suite.ChainB, &suite.ChainA)
+	pathCA := suite.SetupDefaultPath(&suite.ChainC, &suite.ChainA)
+	pathBA := suite.SetupDefaultPath(&suite.ChainB, &suite.ChainA)
 
 	friend := GenAccount(t, &suite.ChainB)
 
@@ -152,4 +152,26 @@ func TestSameAddressDifferentChains(t *testing.T) {
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)
 	require.Len(t, history, 2)
 	require.NotEqual(t, history[0], history[1])
+}
+
+// Checks that connections between two of the same modules are not
+// allowed. This checks that we are using the handshake logic, the
+// other permutations of the handshake are tested in the
+// polytone/handshake package.
+func TestHandshakeBetweenSameModule(t *testing.T) {
+	suite := NewSuite(t)
+
+	aNote := suite.ChainA.QueryPort(suite.ChainA.Note)
+	aVoice := suite.ChainA.QueryPort(suite.ChainA.Voice)
+	bNote := suite.ChainB.QueryPort(suite.ChainB.Note)
+	bVoice := suite.ChainB.QueryPort(suite.ChainB.Voice)
+
+	_, err := suite.SetupPath(aNote, bNote, &suite.ChainA, &suite.ChainB)
+	require.Error(t, err, "connections not allowed between same module")
+
+	_, err = suite.SetupPath(aVoice, bVoice, &suite.ChainA, &suite.ChainB)
+	require.Error(t, err, "connections not allowed between same module")
+
+	_, err = suite.SetupPath(aVoice, bNote, &suite.ChainA, &suite.ChainB)
+	require.NoError(t, err, "can still pair after failure")
 }
