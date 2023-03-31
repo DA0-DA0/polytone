@@ -80,7 +80,7 @@ func (s *Suite) SetupPath(aPort, bPort string, chainA, chainB *Chain) (*ibctesti
 	path.EndpointB.ChannelConfig = ChannelConfig(bPort)
 
 	// the ibctesting version of SetupPath does not return an
-	// error, so we write it ourselves 🙏
+	// error, so we write it ourselves.
 	setupClients := func(a, b *ibctesting.Endpoint) error {
 		err := a.CreateClient()
 		if err != nil {

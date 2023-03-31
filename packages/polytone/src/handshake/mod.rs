@@ -27,6 +27,9 @@ pub fn voice_version() -> String {
 /// - `extensions` the Polytone extensions supported by the caller.
 ///   Extensions are explained in detail in the polytone spec.
 /// - `msg` the message received to open the channel.
+/// - `counterparty_version` the expected version of the counterparty
+///   for example, for a note connecting to a voice, this should be
+///   `voice_version()`.
 fn open(
     msg: &IbcChannelOpenMsg,
     extensions: &[&str],

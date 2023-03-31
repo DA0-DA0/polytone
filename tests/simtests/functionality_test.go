@@ -167,11 +167,26 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 	bVoice := suite.ChainB.QueryPort(suite.ChainB.Voice)
 
 	_, err := suite.SetupPath(aNote, bNote, &suite.ChainA, &suite.ChainB)
-	require.Error(t, err, "connections not allowed between same module")
+	require.ErrorContains(t,
+		err,
+		"channel open try callback failed",
+		"note <-/-> note",
+	)
+	// for reasons i do not understand, if the try step fails the
+	// sequence number for the sending account does not get
+	// incremented correctly. as a bandaid, this manually corrects.
+	//
+	// TODO: why do we need to do this??
+	suite.ChainB.Chain.SenderAccount.SetSequence(suite.ChainA.Chain.SenderAccount.GetSequence() + 1)
 
-	_, err = suite.SetupPath(aVoice, bVoice, &suite.ChainA, &suite.ChainB)
-	require.Error(t, err, "connections not allowed between same module")
+	_, err = suite.SetupPath(bVoice, aVoice, &suite.ChainB, &suite.ChainA)
+	require.ErrorContains(t,
+		err,
+		"channel open try callback failed",
+		"voice <-/-> voice",
+	)
+	suite.ChainA.Chain.SenderAccount.SetSequence(suite.ChainA.Chain.SenderAccount.GetSequence() + 1)
 
 	_, err = suite.SetupPath(aVoice, bNote, &suite.ChainA, &suite.ChainB)
-	require.NoError(t, err, "can still pair after failure")
+	require.NoError(t, err, "voice <- -> note")
 }
