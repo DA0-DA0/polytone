@@ -5,7 +5,7 @@ pub use crate::callback::Callback;
 pub type Ack = Callback;
 
 /// Serializes an ACK-SUCCESS containing the provided data.
-pub fn ack_success(c: Vec<Option<Binary>>) -> Binary {
+pub fn ack_success(c: Vec<Binary>) -> Binary {
     to_binary(&Callback::Success(c)).unwrap()
 }
 

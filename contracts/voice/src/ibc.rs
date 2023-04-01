@@ -111,11 +111,11 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 .add_attribute("ack_error", &e)
                 .set_data(ack_fail(e)),
             SubMsgResult::Ok(_) => {
-                let data = parse_reply_execute_data(msg)
+                let data = parse_reply_execute_data(msg.clone())
                     .expect("execution succeded")
                     .data
                     .expect("proxy should set data");
-                match from_binary::<Vec<Option<Binary>>>(&data) {
+                match from_binary::<Vec<Binary>>(&data) {
                     Ok(d) => Response::default().set_data(ack_success(d)),
                     Err(e) => Response::default()
                         .set_data(ack_fail(format!("unmarshaling callback data: ({e})"))),
