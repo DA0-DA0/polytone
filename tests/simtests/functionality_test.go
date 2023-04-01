@@ -1,12 +1,19 @@
 package simtests
 
 import (
-	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	w "github.com/CosmWasm/wasmvm/types"
 	"github.com/stretchr/testify/require"
+)
+
+type Tester string
+
+const (
+	testBinary Tester = "aGVsbG8=" // "hello" in base64
+	testText   Tester = "hello"
 )
 
 // I can:
@@ -27,7 +34,7 @@ func TestFunctionality(t *testing.T) {
 	// chain.
 
 	accountA := GenAccount(t, &suite.ChainA)
-	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
+	dataMsg := fmt.Sprintf(`{"hello": { "data": "%s" }}`, testBinary)
 	dataCosmosMsg := w.CosmosMsg{
 		Wasm: &w.WasmMsg{
 			Execute: &w.ExecuteMsg{
@@ -47,10 +54,18 @@ func TestFunctionality(t *testing.T) {
 	}
 
 	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	callbackExecute := suite.parseCallbackExecute(t, callback)
+	require.Len(t, callbackExecute.Success, 2)
+	require.Len(t, callbackExecute.Error, 0)
 
-	require.Equal(t, Callback{
-		Success: []string{"aGVsbG8K", ""},
-	}, callback)
+	result1 := unmarshalExecute(t, callbackExecute.Success[0].Data).Data
+	result2 := unmarshalExecute(t, callbackExecute.Success[1].Data).Data
+
+	require.Equal(t, "hello", string(result1))
+	require.Equal(t, "", string(result2))
 
 	balanceQuery := w.QueryRequest{
 		Bank: &w.BankQuery{
@@ -85,14 +100,14 @@ func TestFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	require.Len(t, callback.Success, 2)
 
 	require.Equal(t,
 		Callback{
-			Success: []string{
-				base64.StdEncoding.EncodeToString([]byte(`{"amount":{"denom":"stake","amount":"100"}}`)), // contracts get made with 100 coins.
-				base64.StdEncoding.EncodeToString([]byte(`{"history":[]}`))},
+			Success: [][]byte{
+				[]byte(`{"amount":{"denom":"stake","amount":"100"}}`), // contracts get made with 100 coins.
+				[]byte(`{"history":[]}`)},
 		}, callback)
-
 }
 
 // Generates two addresses from the same private key on chains B and
@@ -138,15 +153,21 @@ func TestSameAddressDifferentChains(t *testing.T) {
 		},
 	}
 
-	c, err := suite.RoundtripExecute(t, pathCA, &duplicate, []any{helloMsg})
-	if err != nil {
-		t.Fatal(err)
-	}
 	b, err := suite.RoundtripExecute(t, pathBA, &friend, []any{helloMsg})
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, Callback{Success: []string{""}}, c)
+	c, err := suite.RoundtripExecute(t, pathCA, &duplicate, []any{helloMsg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bCallbackExecute := suite.parseCallbackExecute(t, b)
+	cCallbackExecute := suite.parseCallbackExecute(t, c)
+
+	require.Equal(t, "", bCallbackExecute.Error)
+	require.Equal(t, "", cCallbackExecute.Error)
+	require.Equal(t, []byte(nil), bCallbackExecute.Success[0].Data)
+	require.Equal(t, []byte(nil), cCallbackExecute.Success[0].Data)
 	require.Equal(t, c, b)
 
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)

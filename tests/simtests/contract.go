@@ -6,6 +6,7 @@ import (
 
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	_ "github.com/cosmos/gogoproto/gogoproto"
 )
 
 type NoteInstantiate struct {
@@ -60,8 +61,30 @@ type CallbackMessage struct {
 }
 
 type Callback struct {
-	Success []string `json:"success,omitempty"`
+	Success [][]byte `json:"success,omitempty"`
 	Error   string   `json:"error,omitempty"`
+}
+
+type CallbackExecute struct {
+	Success []SubMsgResponse `json:"success,omitempty"`
+	Error   string           `json:"error,omitempty"`
+}
+
+type SubMsgResponse struct {
+	Events []Event `json:"events"`
+	Data   []byte  `json:"data,omitempty"`
+}
+
+type Events []Event
+type Event struct {
+	Type       string          `json:"type"`
+	Attributes EventAttributes `json:"attributes"`
+}
+
+type EventAttributes []EventAttribute
+type EventAttribute struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type Empty struct{}

@@ -1,11 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    SubMsgResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult,
+    SubMsg, SubMsgResult,
 };
 use cw2::set_contract_version;
-use cw_utils::parse_execute_response_data;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -69,13 +68,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     match msg.result {
         SubMsgResult::Err(error) => Err(ContractError::ExecutionFailure { idx: msg.id, error }),
         SubMsgResult::Ok(res) => {
-            collector[msg.id as usize] = match res.data {
-                Some(data) => parse_execute_response_data(&data.0)?.data,
-                None => None,
-            };
+            collector[msg.id as usize] = Some(res);
 
             if msg.id + 1 == collector.len() as u64 {
                 COLLECTOR.remove(deps.storage);
+                // Unwrap the options as we set it to Some
+                let collector: Vec<Binary> = collector
+                    .into_iter()
+                    .map(|res| to_binary(&res.unwrap()))
+                    .collect::<Result<Vec<Binary>, StdError>>()?;
                 Ok(Response::default()
                     .add_attribute("callbacks_processed", (msg.id + 1).to_string())
                     .set_data(to_binary(&collector)?))

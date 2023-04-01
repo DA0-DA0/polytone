@@ -1,6 +1,7 @@
 package simtests
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
@@ -132,5 +133,30 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 	callback := callbacks[len(callbacks)-1]
 	require.Equal(t, account.Address.String(), callback.Initiator)
 	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)
+
 	return callback.Result, nil
+}
+
+func (s *Suite) parseCallbackExecute(t *testing.T, data Callback) CallbackExecute {
+	if len(data.Success) > 0 {
+		var subMsgs []SubMsgResponse
+
+		for _, s := range data.Success {
+			var subMsg SubMsgResponse
+			err := json.Unmarshal(s, &subMsg)
+			require.NoError(t, err)
+
+			subMsgs = append(subMsgs, subMsg)
+		}
+
+		return CallbackExecute{
+			Success: subMsgs,
+			Error:   "",
+		}
+	}
+
+	return CallbackExecute{
+		Success: []SubMsgResponse{},
+		Error:   data.Error,
+	}
 }

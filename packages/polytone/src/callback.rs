@@ -32,7 +32,7 @@ pub struct CallbackMessage {
 pub enum Callback {
     /// Data returned from the host chain. Index n corresponds to the
     /// result of executing the nth message/query.
-    Success(Vec<Option<Binary>>),
+    Success(Vec<Binary>),
     /// The first error that occured while executing the requested
     /// messages/queries.
     Error(String),
