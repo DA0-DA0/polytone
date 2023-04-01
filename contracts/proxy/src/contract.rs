@@ -73,7 +73,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             if msg.id + 1 == collector.len() as u64 {
                 COLLECTOR.remove(deps.storage);
                 // Unwrap the options as we set it to Some
-                let collector: Vec<Binary> = collector
+                let collector = collector
                     .into_iter()
                     .map(|res| to_binary(&res.unwrap()))
                     .collect::<Result<Vec<Binary>, StdError>>()?;
