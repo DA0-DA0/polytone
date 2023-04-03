@@ -1,6 +1,7 @@
 package simtests
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
@@ -19,6 +20,8 @@ type Chain struct {
 }
 
 type Suite struct {
+	t *testing.T
+
 	Coordinator *ibctesting.Coordinator
 	ChainA      Chain
 	ChainB      Chain
@@ -51,6 +54,7 @@ func NewSuite(t *testing.T) Suite {
 	chainC := SetupChain(t, coordinator, 2)
 
 	return Suite{
+		t:           t,
 		Coordinator: coordinator,
 		ChainA:      chainA,
 		ChainB:      chainB,
@@ -61,23 +65,118 @@ func NewSuite(t *testing.T) Suite {
 func ChannelConfig(port string) *sdkibctesting.ChannelConfig {
 	return &sdkibctesting.ChannelConfig{
 		PortID:  port,
-		Version: "polytone",
+		Version: "polytone-1",
 		Order:   channeltypes.UNORDERED,
 	}
 }
 
-func (s *Suite) SetupPath(
-	chainA,
-	chainB *Chain,
-) *ibctesting.Path {
-	aPort := chainA.Chain.ContractInfo(chainA.Note).IBCPortID
-	bPort := chainB.Chain.ContractInfo(chainB.Voice).IBCPortID
+func (c *Chain) QueryPort(contract sdk.AccAddress) string {
+	return c.Chain.ContractInfo(contract).IBCPortID
+}
 
+func (s *Suite) SetupPath(aPort, bPort string, chainA, chainB *Chain) (*ibctesting.Path, error) {
 	path := ibctesting.NewPath(chainA.Chain, chainB.Chain)
 	path.EndpointA.ChannelConfig = ChannelConfig(aPort)
 	path.EndpointB.ChannelConfig = ChannelConfig(bPort)
-	s.Coordinator.Setup(path)
-	return path
+
+	// the ibctesting version of SetupPath does not return an
+	// error, so we write it ourselves.
+	setupClients := func(a, b *ibctesting.Endpoint) error {
+		err := a.CreateClient()
+		if err != nil {
+			return err
+		}
+		err = b.CreateClient()
+		if err != nil {
+			return err
+		}
+		return nil
+
+	}
+	createConnections := func(a, b *ibctesting.Endpoint) error {
+		err := a.ConnOpenInit()
+		if err != nil {
+			return err
+		}
+		err = b.ConnOpenTry()
+		if err != nil {
+			return err
+		}
+		err = a.ConnOpenAck()
+		if err != nil {
+			return err
+		}
+		err = b.ConnOpenConfirm()
+		if err != nil {
+			return err
+		}
+		err = a.UpdateClient()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	createChannels := func(a, b *ibctesting.Endpoint) error {
+		err := a.ChanOpenInit()
+		if err != nil {
+			return err
+		}
+		err = b.ChanOpenTry()
+		if err != nil {
+			return err
+		}
+		err = a.ChanOpenAck()
+		if err != nil {
+			return err
+		}
+		err = b.ChanOpenConfirm()
+		if err != nil {
+			return err
+		}
+		err = a.UpdateClient()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	err := setupClients(path.EndpointA, path.EndpointB)
+	if err != nil {
+		return nil, err
+	}
+	err = createConnections(path.EndpointA, path.EndpointB)
+	if err != nil {
+		return nil, err
+	}
+	err = createChannels(path.EndpointA, path.EndpointB)
+	if err != nil {
+		return nil, err
+	}
+	return path, nil
+}
+
+func (s *Suite) SetupDefaultPath(
+	chainA,
+	chainB *Chain,
+) *ibctesting.Path {
+	// randomize the direction of the handshake. this should be a
+	// no-op for a functional handshake.
+	choice := rand.Intn(2)
+
+	aPort := chainA.QueryPort(chainA.Note)
+	bPort := chainB.QueryPort(chainB.Voice)
+	if choice == 0 {
+		// b -> a
+		path, err := s.SetupPath(bPort, aPort, chainB, chainA)
+		require.NoError(s.t, err)
+		return path
+
+	} else {
+		// a -> b
+		path, err := s.SetupPath(aPort, bPort, chainA, chainB)
+		require.NoError(s.t, err)
+		return path
+	}
 }
 
 func (c *Chain) MintBondedDenom(t *testing.T, to sdk.AccAddress) {

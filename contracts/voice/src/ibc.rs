@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
 use polytone::{
     ack::{ack_fail, ack_success},
-    ibc::validate_order_and_version,
+    handshake::voice,
 };
 
 use crate::{error::ContractError, msg::ExecuteMsg, state::CHANNEL_TO_CONNECTION};
@@ -27,8 +27,7 @@ pub fn ibc_channel_open(
     _env: Env,
     msg: IbcChannelOpenMsg,
 ) -> Result<IbcChannelOpenResponse, ContractError> {
-    validate_order_and_version(msg.channel(), msg.counterparty_version())?;
-    Ok(None)
+    voice::open(&msg, &["JSON-CosmosMsg"]).map_err(|e| e.into())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -37,7 +36,7 @@ pub fn ibc_channel_connect(
     _env: Env,
     msg: IbcChannelConnectMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    validate_order_and_version(msg.channel(), msg.counterparty_version())?;
+    voice::connect(&msg, &["JSON-CosmosMsg"])?;
     CHANNEL_TO_CONNECTION.save(
         deps.storage,
         msg.channel().endpoint.channel_id.clone(),
