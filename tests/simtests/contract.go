@@ -13,6 +13,7 @@ type NoteInstantiate struct {
 
 type VoiceInstantiate struct {
 	ProxyCodeId uint64 `json:"proxy_code_id,string"`
+	BlockMaxGas uint64 `json:"block_max_gas,string"`
 }
 
 type TesterInstantiate struct {

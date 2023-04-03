@@ -11,7 +11,7 @@ use polytone::ibc::{Msg, Packet};
 use crate::error::ContractError;
 use crate::ibc::REPLY_FORWARD_DATA;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{PROXY_CODE_ID, SENDER_TO_PROXY};
+use crate::state::{BLOCK_MAX_GAS, PROXY_CODE_ID, SENDER_TO_PROXY};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-voice";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -25,6 +25,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     PROXY_CODE_ID.save(deps.storage, &msg.proxy_code_id.u64())?;
+    BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
     Ok(Response::default().add_attribute("method", "instantiate"))
 }
 

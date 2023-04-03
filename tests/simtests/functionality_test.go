@@ -190,3 +190,28 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 	_, err = suite.SetupPath(aVoice, bNote, &suite.ChainA, &suite.ChainB)
 	require.NoError(t, err, "voice <- -> note")
 }
+
+func TestVoiceOutOfGas(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	gasMsg := `{"run_out_of_gas":{}}`
+	gasCosmosgMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(gasMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
+
+	require.NoError(t, err, "out-of-gas should not error")
+	require.Equal(t, Callback{
+		Error: "codespace: sdk, code: 11",
+	}, callback, "out-of-gas should return an ACK")
+}

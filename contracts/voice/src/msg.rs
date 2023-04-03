@@ -4,6 +4,7 @@ use cosmwasm_std::{Binary, Uint64};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub proxy_code_id: Uint64,
+    pub block_max_gas: Uint64,
 }
 
 #[cw_serde]

@@ -1,6 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg,
+};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
@@ -29,7 +31,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -50,6 +52,11 @@ pub fn execute(
             CALLBACK_HISTORY.save(deps.storage, &h)?;
             Ok(Response::default().add_attribute("method", "get_callback"))
         }
+        ExecuteMsg::RunOutOfGas {} => Ok(Response::default().add_message(WasmMsg::Execute {
+            contract_addr: env.contract.address.into_string(),
+            msg: to_binary(&ExecuteMsg::RunOutOfGas {}).unwrap(),
+            funds: vec![],
+        })),
     }
 }
 
