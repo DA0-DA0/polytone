@@ -27,8 +27,8 @@ pub(crate) const REPLY_FORWARD_DATA: u64 = 1;
 ///
 /// This value was found via a manual binary search using the
 /// `TestVoiceOutOfGas` test in `functionality_test.go`. The true
-/// value is somewhere between 99_750 and 99_700.
-const ACK_GAS_NEEDED: u64 = 99_750;
+/// value is somewhere between 100_050 and 100_000.
+const ACK_GAS_NEEDED: u64 = 100_050;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(
