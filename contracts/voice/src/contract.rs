@@ -140,8 +140,15 @@ fn salt(local_connection: &str, counterparty_port: &str, remote_sender: &str) ->
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {}
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::BlockMaxGas => to_binary(
+            &BLOCK_MAX_GAS.load(deps.storage)?,
+        ),
+        QueryMsg::ProxyCodeId => to_binary(
+            &PROXY_CODE_ID.load(deps.storage)?,
+        ),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -151,6 +158,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             // update the proxy code ID
             PROXY_CODE_ID.save(deps.storage, &proxy_code_id.u64())?;
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
+            
             Ok(Response::default().add_attribute("method", "migrate_with_update"))
         }
     }

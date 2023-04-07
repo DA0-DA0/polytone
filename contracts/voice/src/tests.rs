@@ -2,6 +2,7 @@ use cosmwasm_std::{Empty, Uint64, Addr, WasmMsg, to_binary};
 use cw_multi_test::{App, Executor, ContractWrapper, Contract, next_block};
 
 use crate::msg::{InstantiateMsg, MigrateMsg};
+use crate::msg::QueryMsg::{BlockMaxGas, ProxyCodeId};
 
 const CREATOR_ADDR: &str = "creator";
 
@@ -56,5 +57,18 @@ fn test_update() {
     )
     .unwrap();
 
-    // todo: validate
+    app.update_block(next_block);
+
+    let block_max_gas: u64 = app
+        .wrap()
+        .query_wasm_smart(voice_address.clone(), &BlockMaxGas)
+        .unwrap();
+
+    let proxy_code_id: u64 = app
+        .wrap()
+        .query_wasm_smart(voice_address, &ProxyCodeId)
+        .unwrap();
+
+    assert_eq!(block_max_gas, 1);
+    assert_eq!(proxy_code_id, new_voice_id);
 }
