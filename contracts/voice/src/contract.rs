@@ -10,8 +10,8 @@ use polytone::ibc::{Msg, Packet};
 
 use crate::error::ContractError;
 use crate::ibc::REPLY_FORWARD_DATA;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{PROXY_CODE_ID, SENDER_TO_PROXY};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
+use crate::state::{PROXY_CODE_ID, SENDER_TO_PROXY, BLOCK_MAX_GAS};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-voice";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -24,7 +24,10 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     PROXY_CODE_ID.save(deps.storage, &msg.proxy_code_id.u64())?;
+    BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
+
     Ok(Response::default().add_attribute("method", "instantiate"))
 }
 
@@ -139,6 +142,18 @@ fn salt(local_connection: &str, counterparty_port: &str, remote_sender: &str) ->
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {}
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    match msg {
+        MigrateMsg::WithUpdate {proxy_code_id, block_max_gas } => {
+            // update the proxy code ID
+            PROXY_CODE_ID.save(deps.storage, &proxy_code_id.u64())?;
+            BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
+            Ok(Response::default().add_attribute("method", "migrate_with_update"))
+        }
+    }
 }
 
 #[cfg(test)]
