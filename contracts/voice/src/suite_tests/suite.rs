@@ -18,7 +18,7 @@ fn voice_contract() -> Box<dyn Contract<Empty>> {
 
 pub(crate) struct Suite {
     app: App,
-    pub admin: Addr,
+    pub _admin: Addr,
     pub voice_address: Addr,
     pub voice_code: u64,
 }
@@ -57,7 +57,7 @@ impl SuiteBuilder {
 
         Suite {
             app,
-            admin: Addr::unchecked(CREATOR_ADDR),
+            _admin: Addr::unchecked(CREATOR_ADDR),
             voice_address,
             voice_code,
         }

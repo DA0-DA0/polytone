@@ -39,7 +39,7 @@ impl MockHandshake {
         };
         let mut channel = IbcChannel::new(
             endpoint.clone(),
-            endpoint.clone(),
+            endpoint,
             IbcOrder::Unordered,
             start_version.to_string(),
             connection_start.clone(),
@@ -82,7 +82,7 @@ impl MockHandshake {
 
         (self.confirm)(
             &IbcChannelConnectMsg::OpenConfirm {
-                channel: channel.clone(),
+                channel,
             },
             end_extensions,
         )?;
