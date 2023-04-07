@@ -13,6 +13,9 @@ import (
 	"github.com/strangelove-ventures/interchaintest/v4/ibc"
 	"github.com/strangelove-ventures/interchaintest/v4/testreporter"
 	"github.com/strangelove-ventures/interchaintest/v4/testutil"
+	"github.com/stretchr/testify/require"
+
+	w "github.com/CosmWasm/wasmvm/types"
 
 	"go.uber.org/zap/zaptest"
 )
@@ -256,4 +259,74 @@ func (s *Suite) QueryChannelsInState(chain *SuiteChain, state string) []ibc.Chan
 
 func (s *Suite) QueryOpenChannels(chain *SuiteChain) []ibc.ChannelOutput {
 	return s.QueryChannelsInState(chain, CHANNEL_STATE_OPEN)
+}
+
+func (s *Suite) RoundtripExecute(note string, chain *SuiteChain, msgs []w.CosmosMsg) (Callback, error) {
+	msg := NoteExecuteMsg{
+		Msgs:           msgs,
+		TimeoutSeconds: 100,
+		Callback: &CallbackRequest{
+			Receiver: chain.Tester,
+			Msg:      "aGVsbG8K",
+		},
+	}
+	return s.RoundtripMessage(note, chain, NoteExecute{
+		Execute: &msg,
+	})
+}
+
+func (s *Suite) RoundtripQuery(note string, chain *SuiteChain, msgs []w.CosmosMsg) (Callback, error) {
+	msg := NoteQuery{
+		Msgs:           msgs,
+		TimeoutSeconds: 100,
+		Callback: CallbackRequest{
+			Receiver: chain.Tester,
+			Msg:      "aGVsbG8K",
+		},
+	}
+	return s.RoundtripMessage(note, chain, NoteExecute{
+		Query: &msg,
+	})
+}
+
+func (s *Suite) RoundtripMessage(note string, chain *SuiteChain, msg NoteExecute) (Callback, error) {
+	callbacksStart := s.QueryTesterCallbackHistory(&s.ChainA).History
+
+	marshalled, err := json.Marshal(msg)
+	if err != nil {
+		return Callback{}, err
+	}
+	_, err = chain.Cosmos.ExecuteContract(s.ctx, chain.User.KeyName, note, string(marshalled))
+	if err != nil {
+		return Callback{}, err
+	}
+	// wait for packet to relay.
+	err = testutil.WaitForBlocks(s.ctx, 10, s.ChainA.Ibc, s.ChainB.Ibc)
+	if err != nil {
+		return Callback{}, err
+	}
+	callbacksEnd := s.QueryTesterCallbackHistory(&s.ChainA).History
+	if len(callbacksEnd) == len(callbacksStart) {
+		return Callback{}, errors.New("no new callback")
+	}
+	callback := callbacksEnd[len(callbacksEnd)-1]
+	require.Equal(
+		s.t,
+		chain.User.Bech32Address(chain.Ibc.Config().Bech32Prefix),
+		callback.Initiator,
+	)
+	require.Equal(s.t, "aGVsbG8K", callback.InitiatorMsg)
+	return callback.Result, nil
+}
+
+func (s *Suite) QueryTesterCallbackHistory(chain *SuiteChain) HistoryResponse {
+	var response DataWrappedHistoryResponse
+	query := TesterQuery{
+		History: &Empty{},
+	}
+	err := chain.Cosmos.QueryContract(s.ctx, chain.Tester, query, &response)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return response.Data
 }

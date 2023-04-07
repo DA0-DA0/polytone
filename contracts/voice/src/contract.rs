@@ -90,6 +90,11 @@ pub fn execute(
                             let proxy = deps.api.addr_humanize(&instantiate2_address(
                                 &checksum, &contract, &salt,
                             )?)?;
+                            SENDER_TO_PROXY.save(
+                                deps.storage,
+                                (connection_id, counterparty_port, sender.clone()),
+                                &proxy,
+                            )?;
                             (
                                 Some(WasmMsg::Instantiate2 {
                                     admin: None,

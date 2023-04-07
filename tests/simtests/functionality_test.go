@@ -191,6 +191,9 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 	require.NoError(t, err, "voice <- -> note")
 }
 
+// Executes a message on the note chain that will run our of gas on
+// the voice chain and makes sure that an ACK + callback indicating
+// that the out-of-gas error occured is returned.
 func TestVoiceOutOfGas(t *testing.T) {
 	suite := NewSuite(t)
 
@@ -214,4 +217,53 @@ func TestVoiceOutOfGas(t *testing.T) {
 	require.Equal(t, Callback{
 		Error: "codespace: sdk, code: 11",
 	}, callback, "out-of-gas should return an ACK")
+}
+
+// Tests executing a message on the remote chain, checking the
+// callback, and then executing another message.
+//
+// This tests that we correctly save proxies and reuse them upon
+// another message being executed. Before this test, we were not
+// saving proxies after instantiating them which would cause
+// `codespace wasm: 15` (duplicate instantiation) errors upon
+// attempting to execute a second message with the same account.g
+func TestMultipleMessages(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
+	dataCosmosMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(dataMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	noDataCosmosMsg := w.CosmosMsg{
+		Distribution: &w.DistributionMsg{
+			SetWithdrawAddress: &w.SetWithdrawAddressMsg{
+				Address: suite.ChainB.Voice.String(),
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, Callback{
+		Success: []string{"aGVsbG8K", ""},
+	}, callback)
+
+	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	require.NoError(t, err)
+	require.Equal(t, Callback{
+		Success: []string{"aGVsbG8K", ""},
+	}, callback)
 }

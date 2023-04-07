@@ -1,5 +1,9 @@
 package strangelove
 
+import (
+	w "github.com/CosmWasm/wasmvm/types"
+)
+
 // these types are copied from ../simtests/contract.go. you'll need to
 // manually update each one when you make a change. the reason is that
 // (1) wasmd ibctesting and interchaintest use different sdk versions
@@ -24,13 +28,13 @@ type NoteExecute struct {
 }
 
 type NoteQuery struct {
-	Msgs           []any           `json:"msgs"`
+	Msgs           []w.CosmosMsg   `json:"msgs"`
 	TimeoutSeconds uint64          `json:"timeout_seconds,string"`
 	Callback       CallbackRequest `json:"callback"`
 }
 
 type NoteExecuteMsg struct {
-	Msgs           []any            `json:"msgs"`
+	Msgs           []w.CosmosMsg    `json:"msgs"`
 	TimeoutSeconds uint64           `json:"timeout_seconds,string"`
 	Callback       *CallbackRequest `json:"callback,omitempty"`
 }
@@ -41,11 +45,11 @@ type PolytoneMessage struct {
 }
 
 type PolytoneQuery struct {
-	Msgs []any `json:"msgs"`
+	Msgs []w.CosmosMsg `json:"msgs"`
 }
 
 type PolytoneExecute struct {
-	Msgs []any `json:"msgs"`
+	Msgs []w.CosmosMsg `json:"msgs"`
 }
 
 type CallbackRequest struct {
@@ -65,6 +69,10 @@ type Callback struct {
 }
 
 type Empty struct{}
+
+type DataWrappedHistoryResponse struct {
+	Data HistoryResponse `json:"data"`
+}
 
 type TesterQuery struct {
 	History      *Empty `json:"history,omitempty"`
