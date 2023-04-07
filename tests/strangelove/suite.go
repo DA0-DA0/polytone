@@ -44,27 +44,33 @@ type SuiteChain struct {
 func NewSuite(t *testing.T) Suite {
 	ctx := context.Background()
 
+	// Interchaintest has a gas adjustment variable for both the
+	// ibc.ChainConfig and interchaintest.ChainSpec. It ignores
+	// the one set in the ibc.ChainConfig and uses the one in the
+	// spec.
+	gasAdjustment := 2.0
+
 	factory := interchaintest.NewBuiltinChainFactory(
 		zaptest.NewLogger(t),
 		[]*interchaintest.ChainSpec{
 			{
-				Name:      "juno",
-				ChainName: "juno1",
-				Version:   "latest",
+				Name:          "juno",
+				ChainName:     "juno1",
+				Version:       "latest",
+				GasAdjustment: &gasAdjustment,
 				ChainConfig: ibc.ChainConfig{
 					Denom:          "ujuno",
-					GasAdjustment:  2.0,
 					GasPrices:      "0.00ujuno",
 					EncodingConfig: wasm.WasmEncoding(),
 				},
 			},
 			{
-				Name:      "juno",
-				ChainName: "juno2",
-				Version:   "latest",
+				Name:          "juno",
+				ChainName:     "juno2",
+				Version:       "latest",
+				GasAdjustment: &gasAdjustment,
 				ChainConfig: ibc.ChainConfig{
 					Denom:          "ujuno",
-					GasAdjustment:  2.0,
 					GasPrices:      "0.00ujuno",
 					EncodingConfig: wasm.WasmEncoding(),
 				},
@@ -147,19 +153,20 @@ func NewSuite(t *testing.T) Suite {
 		Relayer: relayer,
 	}
 
-	suite.SetupChain(&suite.ChainA, suite.ChainA.User)
-	suite.SetupChain(&suite.ChainB, suite.ChainB.User)
+	suite.SetupChain(&suite.ChainA)
+	suite.SetupChain(&suite.ChainB)
 
 	return suite
 }
 
-func (s *Suite) SetupChain(chain *SuiteChain, user *ibc.Wallet) {
+func (s *Suite) SetupChain(chain *SuiteChain) {
+	user := chain.User
 	cc := chain.Cosmos
 	noteId, err := cc.StoreContract(s.ctx, user.KeyName, "../wasms/polytone_note.wasm")
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	_, err = cc.StoreContract(s.ctx, user.KeyName, "../wasms/polytone_voice.wasm")
+	voiceId, err := cc.StoreContract(s.ctx, user.KeyName, "../wasms/polytone_voice.wasm")
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -168,26 +175,22 @@ func (s *Suite) SetupChain(chain *SuiteChain, user *ibc.Wallet) {
 		s.t.Fatal(err)
 	}
 
-	_, err = cc.StoreContract(s.ctx, user.KeyName, "../wasms/polytone_tester.wasm")
+	testerId, err := cc.StoreContract(s.ctx, user.KeyName, "../wasms/polytone_tester.wasm")
 	if err != nil {
 		s.t.Fatal(err)
 	}
 
-	_, err = strconv.Atoi(proxyId)
+	proxyUint, err := strconv.Atoi(proxyId)
 	if err != nil {
 		s.t.Fatal(err)
 	}
 
 	chain.Note = s.Instantiate(cc, user, noteId, NoteInstantiate{})
-
-	// instantiating voice needs:
-	// https://github.com/strangelove-ventures/interchaintest/issues/482
-
-	// chain.Voice = s.Instantiate(cc, user, voiceId, VoiceInstantiate{
-	// 	ProxyCodeId: uint64(proxyUint),
-	// 	BlockMaxGas: 100_000_000,
-	// })
-	// chain.Tester = s.Instantiate(cc, user, testerId, TesterInstantiate{})
+	chain.Voice = s.Instantiate(cc, user, voiceId, VoiceInstantiate{
+		ProxyCodeId: uint64(proxyUint),
+		BlockMaxGas: 100_000_000,
+	})
+	chain.Tester = s.Instantiate(cc, user, testerId, TesterInstantiate{})
 	return
 }
 
@@ -196,7 +199,7 @@ func (s *Suite) Instantiate(chain *cosmos.CosmosChain, user *ibc.Wallet, codeId 
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	s.t.Logf("🙏 %s", str)
+
 	address, err := chain.InstantiateContract(s.ctx, user.KeyName, codeId, string(str), true)
 	if err != nil {
 		s.t.Fatal(err)

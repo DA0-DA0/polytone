@@ -1,4 +1,4 @@
-name: check dependencies for vulnerabilities
+name: check dependencies
 
 on:
   schedule:

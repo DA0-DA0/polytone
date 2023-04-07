@@ -176,7 +176,7 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 	// sequence number for the sending account does not get
 	// incremented correctly. as a bandaid, this manually corrects.
 	//
-	// TODO: why do we need to do this??
+	// FIXME: why?
 	suite.ChainB.Chain.SenderAccount.SetSequence(suite.ChainA.Chain.SenderAccount.GetSequence() + 1)
 
 	_, err = suite.SetupPath(bVoice, aVoice, &suite.ChainB, &suite.ChainA)
