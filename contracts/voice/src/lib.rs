@@ -5,4 +5,4 @@ pub mod msg;
 pub mod state;
 
 #[cfg(test)]
-mod tests;
+mod suite_tests;

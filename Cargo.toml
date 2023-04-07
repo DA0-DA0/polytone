@@ -45,3 +45,5 @@ sha2 = "0.10.6"
 # dev-dependencies
 cw-multi-test = "0.16.2"
 polytone-tester = { path = "tests/polytone-tester" }
+anyhow = { version = "1.0.51"}
+
