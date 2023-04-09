@@ -1,16 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg,
+    from_binary, to_binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, Reply, Response, SubMsg,
     SubMsgResult, WasmMsg,
 };
 
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
+
 use polytone::{
-    ack::{ack_fail, ack_success},
-    handshake::voice,
+    ack::ack_fail, callback::Callback, handshake::voice, ibc::validate_order_and_version,
 };
 
 use crate::{
@@ -115,8 +115,8 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                     .expect("execution succeded")
                     .data
                     .expect("proxy should set data");
-                match from_binary::<Vec<Binary>>(&data) {
-                    Ok(d) => Response::default().set_data(ack_success(d)),
+                match from_binary::<Callback>(&data) {
+                    Ok(_) => Response::default().set_data(data),
                     Err(e) => Response::default()
                         .set_data(ack_fail(format!("unmarshaling callback data: ({e})"))),
                 }

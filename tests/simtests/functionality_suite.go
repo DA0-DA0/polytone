@@ -1,9 +1,6 @@
 package simtests
 
 import (
-	"encoding/json"
-	"math/rand"
-
 	"testing"
 
 	wasmapp "github.com/CosmWasm/wasmd/app"
@@ -206,7 +203,7 @@ func (c *Chain) MintBondedDenom(t *testing.T, to sdk.AccAddress) {
 	require.NoError(t, err)
 }
 
-func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (Callback, error) {
+func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (CallbackDataExecute, error) {
 	msg := NoteExecuteMsg{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
@@ -215,12 +212,13 @@ func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *A
 			Msg:      "aGVsbG8K",
 		},
 	}
-	return s.RoundtripMessage(t, path, account, NoteExecute{
+	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Execute: &msg,
 	})
+	return callback.Execute, err
 }
 
-func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (Callback, error) {
+func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (CallbackDataQuery, error) {
 	msg := NoteQuery{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
@@ -229,9 +227,10 @@ func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Acc
 			Msg:      "aGVsbG8K",
 		},
 	}
-	return s.RoundtripMessage(t, path, account, NoteExecute{
+	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Query: &msg,
 	})
+	return callback.Query, err
 }
 
 func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *Account, msg NoteExecute) (Callback, error) {
@@ -248,28 +247,4 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)
 
 	return callback.Result, nil
-}
-
-func (s *Suite) parseCallbackExecute(t *testing.T, data Callback) CallbackExecute {
-	if len(data.Success) > 0 {
-		var subMsgs []SubMsgResponse
-
-		for _, s := range data.Success {
-			var subMsg SubMsgResponse
-			err := json.Unmarshal(s, &subMsg)
-			require.NoError(t, err)
-
-			subMsgs = append(subMsgs, subMsg)
-		}
-
-		return CallbackExecute{
-			Success: subMsgs,
-			Error:   "",
-		}
-	}
-
-	return CallbackExecute{
-		Success: []SubMsgResponse{},
-		Error:   data.Error,
-	}
 }

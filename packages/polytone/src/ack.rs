@@ -1,17 +1,27 @@
-use cosmwasm_std::{from_binary, to_binary, Binary, IbcAcknowledgement};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{from_binary, to_binary, Binary, IbcAcknowledgement, SubMsgResponse};
 
 pub use crate::callback::Callback;
+use crate::callback::{CallbackData, RequestType};
 
 pub type Ack = Callback;
 
+#[cw_serde]
+pub struct InterlError(String);
+
 /// Serializes an ACK-SUCCESS containing the provided data.
-pub fn ack_success(c: Vec<Binary>) -> Binary {
-    to_binary(&Callback::Success(c)).unwrap()
+pub fn ack_success_query(c: Vec<Binary>) -> Binary {
+    to_binary(&Callback::Query(CallbackData::Success(c))).unwrap()
+}
+
+/// Serializes an ACK-SUCCESS containing the provided data.
+pub fn ack_success_execute(c: Vec<SubMsgResponse>) -> Binary {
+    to_binary(&Callback::Execute(CallbackData::Success(c))).unwrap()
 }
 
 /// Serializes an ACK-FAIL containing the provided error.
 pub fn ack_fail(err: String) -> Binary {
-    to_binary(&Callback::Error(err)).unwrap()
+    to_binary(&InterlError(err)).unwrap()
 }
 
 /// Unmarshals an ACK from an acknowledgement returned by the SDK. If
@@ -38,6 +48,15 @@ pub fn ack_fail(err: String) -> Binary {
 /// For an example of this, see this integration test:
 ///
 /// <https://github.com/public-awesome/ics721/blob/3af19e421a95aec5291a0cabbe796c58698ac97f/e2e/adversarial_test.go#L274-L285>
-pub fn unmarshal_ack(ack: &IbcAcknowledgement) -> Ack {
-    from_binary(&ack.data).unwrap_or_else(|_| Callback::Error(ack.data.to_base64()))
+pub fn unmarshal_ack(ack: &IbcAcknowledgement, request_type: RequestType) -> Ack {
+    if let Ok(err) = from_binary::<InterlError>(&ack.data) {
+        return match request_type {
+            RequestType::Execute => Callback::Execute(CallbackData::Error(err.0)),
+            RequestType::Query => Callback::Query(CallbackData::Error(err.0)),
+        };
+    }
+    from_binary(&ack.data).unwrap_or_else(|_| match request_type {
+        RequestType::Execute => Callback::Execute(CallbackData::Error(ack.data.to_base64())),
+        RequestType::Query => Callback::Query(CallbackData::Error(ack.data.to_base64())),
+    })
 }

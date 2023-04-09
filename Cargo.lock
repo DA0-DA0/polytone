@@ -514,6 +514,7 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw2",
+ "polytone",
  "thiserror",
 ]
 

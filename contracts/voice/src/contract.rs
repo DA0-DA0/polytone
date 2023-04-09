@@ -6,6 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
+use polytone::ack::ack_success_query;
 use polytone::ibc::{Msg, Packet};
 
 use crate::error::ContractError;
@@ -70,7 +71,7 @@ pub fn execute(
                         }
                         Ok(Response::default()
                             .add_attribute("method", "rx_query")
-                            .set_data(to_binary(&results)?))
+                            .set_data(ack_success_query(results)))
                     }
                     Msg::Execute { msgs } => {
                         let (instantiate, proxy) = if let Some(proxy) = SENDER_TO_PROXY.may_load(

@@ -1,10 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult,
-    SubMsg, SubMsgResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
+use polytone::ack::ack_success_execute;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -75,11 +76,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 // Unwrap the options as we set it to Some
                 let collector = collector
                     .into_iter()
-                    .map(|res| to_binary(&res.unwrap()))
-                    .collect::<Result<Vec<Binary>, StdError>>()?;
+                    .map(|res| res.unwrap())
+                    .collect::<Vec<SubMsgResponse>>();
                 Ok(Response::default()
                     .add_attribute("callbacks_processed", (msg.id + 1).to_string())
-                    .set_data(to_binary(&collector)?))
+                    .set_data(ack_success_execute(collector)))
             } else {
                 COLLECTOR.save(deps.storage, &collector)?;
                 Ok(Response::default())

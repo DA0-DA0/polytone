@@ -22,6 +22,7 @@ cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
+polytone = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
