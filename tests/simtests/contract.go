@@ -61,11 +61,16 @@ type CallbackMessage struct {
 }
 
 type Callback struct {
+	Execute CallbackDataExecute `json:"execute,omitempty"`
+	Query   CallbackDataQuery   `json:"query,omitempty"`
+}
+
+type CallbackDataQuery struct {
 	Success [][]byte `json:"success,omitempty"`
 	Error   string   `json:"error,omitempty"`
 }
 
-type CallbackExecute struct {
+type CallbackDataExecute struct {
 	Success []SubMsgResponse `json:"success,omitempty"`
 	Error   string           `json:"error,omitempty"`
 }

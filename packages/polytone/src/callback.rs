@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, StdResult,
-    Storage, WasmMsg,
+    Storage, SubMsgResponse, WasmMsg,
 };
 use cw_storage_plus::{Item, Map};
 
@@ -30,9 +30,17 @@ pub struct CallbackMessage {
 
 #[cw_serde]
 pub enum Callback {
+    /// Callback data from a query.
+    Query(CallbackData<Vec<Binary>>),
+    /// Callback data from message execution.
+    Execute(CallbackData<Vec<SubMsgResponse>>),
+}
+
+#[cw_serde]
+pub enum CallbackData<T> {
     /// Data returned from the host chain. Index n corresponds to the
     /// result of executing the nth message/query.
-    Success(Vec<Binary>),
+    Success(T),
     /// The first error that occured while executing the requested
     /// messages/queries.
     Error(String),
@@ -63,6 +71,7 @@ pub fn request_callback(
     api: &dyn Api,
     initiator: Addr,
     request: Option<CallbackRequest>,
+    request_type: RequestType,
 ) -> StdResult<()> {
     let seq = SEQ.may_load(storage)?.unwrap_or_default() + 1;
     SEQ.save(storage, &seq)?;
@@ -78,6 +87,7 @@ pub fn request_callback(
                 initiator,
                 initiator_msg,
                 receiver,
+                request_type,
             },
         )?;
     }
@@ -119,7 +129,7 @@ pub fn on_ack(
 	return None
     };
     CALLBACKS.remove(storage, original_packet.sequence);
-    let result = unmarshal_ack(acknowledgement);
+    let result = unmarshal_ack(acknowledgement, request.request_type.clone());
     Some(callback_msg(request, result))
 }
 
@@ -133,10 +143,11 @@ pub fn on_timeout(
 	return None
     };
     CALLBACKS.remove(storage, packet.sequence);
-    Some(callback_msg(
-        request,
-        Callback::Error("timeout".to_string()),
-    ))
+    let result = match request.request_type {
+        RequestType::Execute => Callback::Execute(CallbackData::Error("timeout".to_string())),
+        RequestType::Query => Callback::Query(CallbackData::Error("timeout".to_string())),
+    };
+    Some(callback_msg(request, result))
 }
 
 #[cw_serde]
@@ -144,6 +155,13 @@ struct PendingCallback {
     initiator: Addr,
     initiator_msg: Binary,
     receiver: Addr,
+    request_type: RequestType,
+}
+
+#[cw_serde]
+pub enum RequestType {
+    Execute,
+    Query,
 }
 
 const CALLBACKS: Map<u64, PendingCallback> = Map::new("polytone-callbacks");

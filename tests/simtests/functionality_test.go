@@ -53,11 +53,11 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	callbackExecute, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 	if err != nil {
 		t.Fatal(err)
 	}
-	callbackExecute := suite.parseCallbackExecute(t, callback)
+	// callbackExecute := suite.parseCallbackExecute(t, callback)
 	require.Len(t, callbackExecute.Success, 2)
 	require.Len(t, callbackExecute.Error, 0)
 
@@ -96,18 +96,18 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	callback, err = suite.RoundtripQuery(t, path, &accountA, []any{balanceQuery, historyQuery})
+	callbackQuery, err := suite.RoundtripQuery(t, path, &accountA, []any{balanceQuery, historyQuery})
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Len(t, callback.Success, 2)
+	require.Len(t, callbackQuery.Success, 2)
 
 	require.Equal(t,
-		Callback{
+		CallbackDataQuery{
 			Success: [][]byte{
 				[]byte(`{"amount":{"denom":"stake","amount":"100"}}`), // contracts get made with 100 coins.
 				[]byte(`{"history":[]}`)},
-		}, callback)
+		}, callbackQuery)
 }
 
 // Generates two addresses from the same private key on chains B and
@@ -161,13 +161,11 @@ func TestSameAddressDifferentChains(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bCallbackExecute := suite.parseCallbackExecute(t, b)
-	cCallbackExecute := suite.parseCallbackExecute(t, c)
 
-	require.Equal(t, "", bCallbackExecute.Error)
-	require.Equal(t, "", cCallbackExecute.Error)
-	require.Equal(t, []byte(nil), bCallbackExecute.Success[0].Data)
-	require.Equal(t, []byte(nil), cCallbackExecute.Success[0].Data)
+	require.Equal(t, "", b.Error)
+	require.Equal(t, "", c.Error)
+	require.Equal(t, []byte(nil), b.Success[0].Data)
+	require.Equal(t, []byte(nil), c.Success[0].Data)
 	require.Equal(t, c, b)
 
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)
