@@ -48,15 +48,31 @@ pub fn execute(
             msgs,
             callback,
             timeout_seconds,
-        } => (ibc::Msg::Execute { msgs }, callback, timeout_seconds, RequestType::Execute),
+        } => (
+            ibc::Msg::Execute { msgs },
+            callback,
+            timeout_seconds,
+            RequestType::Execute,
+        ),
         ExecuteMsg::Query {
             msgs,
             callback,
             timeout_seconds,
-        } => (ibc::Msg::Query { msgs }, Some(callback), timeout_seconds, RequestType::Query),
+        } => (
+            ibc::Msg::Query { msgs },
+            Some(callback),
+            timeout_seconds,
+            RequestType::Query,
+        ),
     };
 
-    callback::request_callback(deps.storage, deps.api, info.sender.clone(), callback, request_type)?;
+    callback::request_callback(
+        deps.storage,
+        deps.api,
+        info.sender.clone(),
+        callback,
+        request_type,
+    )?;
 
     let channel_id = CHANNEL
         .may_load(deps.storage)?
