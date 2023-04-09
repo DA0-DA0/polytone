@@ -10,26 +10,27 @@ fn test_update() {
         .with_block_max_gas(Uint64::new(10))
         .build();
 
-    let block_max_pre = suite.query_block_max_gas();
-    let proxy_code_pre = suite.query_proxy_code_id();
+    let block_max = suite.query_block_max_gas();
+    let proxy_code = suite.query_proxy_code_id();
 
-    assert_eq!(block_max_pre, 10);
-    assert_eq!(proxy_code_pre, 0);
+    assert_eq!(block_max, 10);
+    assert_eq!(proxy_code, 0);
 
-    let voice_code_new = suite.store_voice_contract();
+    let proxy_code_new = suite.store_voice_contract();
 
     suite.update(
         Addr::unchecked(CREATOR_ADDR),
-        voice_code_new,
+        proxy_code_new,
         50,
     )
     .unwrap();
     
-    let block_max_pre = suite.query_block_max_gas();
-    let proxy_code_pre = suite.query_proxy_code_id();
+    let block_max = suite.query_block_max_gas();
+    let proxy_code = suite.query_proxy_code_id();
 
-    assert_ne!(block_max_pre, 0);
-    assert_ne!(proxy_code_pre, 0);
+    // assert that both fields updated succesfully
+    assert_eq!(block_max, 50);
+    assert_ne!(proxy_code, 0);
 }
 
 #[test]

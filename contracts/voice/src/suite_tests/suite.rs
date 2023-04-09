@@ -29,7 +29,6 @@ pub(crate) struct SuiteBuilder {
 
 impl Default for SuiteBuilder {
     fn default() -> Self {
-
         Self {
             instantiate: InstantiateMsg {
                 proxy_code_id: Uint64::zero(),

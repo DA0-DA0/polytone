@@ -155,7 +155,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
         MigrateMsg::WithUpdate {proxy_code_id, block_max_gas } => {
-            // update the proxy code ID
+            // update the proxy code ID and block max gas
             PROXY_CODE_ID.save(deps.storage, &proxy_code_id.u64())?;
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
             
