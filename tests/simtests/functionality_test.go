@@ -191,7 +191,7 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 	require.NoError(t, err, "voice <- -> note")
 }
 
-// Executes a message on the note chain that will run our of gas on
+// Executes a message on the note chain that will run out of gas on
 // the voice chain and makes sure that an ACK + callback indicating
 // that the out-of-gas error occured is returned.
 func TestVoiceOutOfGas(t *testing.T) {
