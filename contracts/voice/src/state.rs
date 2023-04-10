@@ -9,3 +9,6 @@ pub(crate) const CHANNEL_TO_CONNECTION: Map<String, String> = Map::new("c2c");
 
 /// Code ID of the proxy contract being used.
 pub(crate) const PROXY_CODE_ID: Item<u64> = Item::new("pci");
+
+/// Max gas usable in a single block.
+pub(crate) const BLOCK_MAX_GAS: Item<u64> = Item::new("bmg");
