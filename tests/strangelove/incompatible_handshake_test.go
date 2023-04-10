@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tests that a note may only every connect to a voice, and a voice
+// Tests that a note may only ever connect to a voice, and a voice
 // only to a note.
 func TestInvalidHandshake(t *testing.T) {
 	suite := NewSuite(t)
