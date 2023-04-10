@@ -213,6 +213,7 @@ func TestVoiceOutOfGas(t *testing.T) {
 
 	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
 
+	// SDK codespace 11 is out-of-gas. See cosmos-sdk/types/errors/errors.go
 	require.NoError(t, err, "out-of-gas should not error")
 	require.Equal(t, Callback{
 		Error: "codespace: sdk, code: 11",
