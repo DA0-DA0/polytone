@@ -176,7 +176,7 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 	// sequence number for the sending account does not get
 	// incremented correctly. as a bandaid, this manually corrects.
 	//
-	// TODO: why do we need to do this??
+	// FIXME: why?
 	suite.ChainB.Chain.SenderAccount.SetSequence(suite.ChainA.Chain.SenderAccount.GetSequence() + 1)
 
 	_, err = suite.SetupPath(bVoice, aVoice, &suite.ChainB, &suite.ChainA)
@@ -189,4 +189,82 @@ func TestHandshakeBetweenSameModule(t *testing.T) {
 
 	_, err = suite.SetupPath(aVoice, bNote, &suite.ChainA, &suite.ChainB)
 	require.NoError(t, err, "voice <- -> note")
+}
+
+// Executes a message on the note chain that will run out of gas on
+// the voice chain and makes sure that an ACK + callback indicating
+// that the out-of-gas error occured is returned.
+func TestVoiceOutOfGas(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	gasMsg := `{"run_out_of_gas":{}}`
+	gasCosmosgMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(gasMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
+
+	// SDK codespace 11 is out-of-gas. See cosmos-sdk/types/errors/errors.go
+	require.NoError(t, err, "out-of-gas should not error")
+	require.Equal(t, Callback{
+		Error: "codespace: sdk, code: 11",
+	}, callback, "out-of-gas should return an ACK")
+}
+
+// Tests executing a message on the remote chain, checking the
+// callback, and then executing another message.
+//
+// This tests that we correctly save proxies and reuse them upon
+// another message being executed. Before this test, we were not
+// saving proxies after instantiating them which would cause
+// `codespace wasm: 15` (duplicate instantiation) errors upon
+// attempting to execute a second message with the same account.g
+func TestMultipleMessages(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
+	dataCosmosMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(dataMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	noDataCosmosMsg := w.CosmosMsg{
+		Distribution: &w.DistributionMsg{
+			SetWithdrawAddress: &w.SetWithdrawAddressMsg{
+				Address: suite.ChainB.Voice.String(),
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, Callback{
+		Success: []string{"aGVsbG8K", ""},
+	}, callback)
+
+	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	require.NoError(t, err)
+	require.Equal(t, Callback{
+		Success: []string{"aGVsbG8K", ""},
+	}, callback)
 }

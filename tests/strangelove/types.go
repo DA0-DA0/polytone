@@ -1,12 +1,15 @@
-package simtests
+package strangelove
 
 import (
-	"encoding/json"
-	"testing"
-
-	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	w "github.com/CosmWasm/wasmvm/types"
 )
+
+// these types are copied from ../simtests/contract.go. you'll need to
+// manually update each one when you make a change. the reason is that
+// (1) wasmd ibctesting and interchaintest use different sdk versions
+// so they need their own go.mod, (2) i don't know how to use go local
+// imports and think it would take more work to learn than to copy
+// these files every once and a while.
 
 type NoteInstantiate struct {
 }
@@ -25,13 +28,13 @@ type NoteExecute struct {
 }
 
 type NoteQuery struct {
-	Msgs           []any           `json:"msgs"`
+	Msgs           []w.CosmosMsg   `json:"msgs"`
 	TimeoutSeconds uint64          `json:"timeout_seconds,string"`
 	Callback       CallbackRequest `json:"callback"`
 }
 
 type NoteExecuteMsg struct {
-	Msgs           []any            `json:"msgs"`
+	Msgs           []w.CosmosMsg    `json:"msgs"`
 	TimeoutSeconds uint64           `json:"timeout_seconds,string"`
 	Callback       *CallbackRequest `json:"callback,omitempty"`
 }
@@ -42,11 +45,11 @@ type PolytoneMessage struct {
 }
 
 type PolytoneQuery struct {
-	Msgs []any `json:"msgs"`
+	Msgs []w.CosmosMsg `json:"msgs"`
 }
 
 type PolytoneExecute struct {
-	Msgs []any `json:"msgs"`
+	Msgs []w.CosmosMsg `json:"msgs"`
 }
 
 type CallbackRequest struct {
@@ -67,6 +70,10 @@ type Callback struct {
 
 type Empty struct{}
 
+type DataWrappedHistoryResponse struct {
+	Data HistoryResponse `json:"data"`
+}
+
 type TesterQuery struct {
 	History      *Empty `json:"history,omitempty"`
 	HelloHistory *Empty `json:"hello_history,omitempty"`
@@ -78,44 +85,4 @@ type HistoryResponse struct {
 
 type HelloHistoryResponse struct {
 	History []string `json:"history"`
-}
-
-func Instantiate(t *testing.T, chain *ibctesting.TestChain, codeId uint64, msg any) sdk.AccAddress {
-	instantiate, err := json.Marshal(msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return chain.InstantiateContract(codeId, instantiate)
-}
-
-func QueryCallbackHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []CallbackMessage {
-	bytes, err := json.Marshal(TesterQuery{
-		History: &Empty{},
-	})
-	if err != nil {
-		panic(err)
-	}
-	res, err := chain.App.WasmKeeper.QuerySmart(chain.GetContext(), tester, bytes)
-	if err != nil {
-		panic(err)
-	}
-	var response HistoryResponse
-	json.Unmarshal(res, &response)
-	return response.History
-}
-
-func QueryHelloHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []string {
-	bytes, err := json.Marshal(TesterQuery{
-		HelloHistory: &Empty{},
-	})
-	if err != nil {
-		panic(err)
-	}
-	res, err := chain.App.WasmKeeper.QuerySmart(chain.GetContext(), tester, bytes)
-	if err != nil {
-		panic(err)
-	}
-	var response HelloHistoryResponse
-	json.Unmarshal(res, &response)
-	return response.History
 }

@@ -4,9 +4,6 @@ build:
 test:
     cargo test
 
-lint:
-    cargo clippy --all-targets -- -D warnings
-
 optimize:
     if [[ $(uname -m) =~ "arm64" ]]; then \
     docker run --rm -v "$(pwd)":/code \
@@ -33,7 +30,12 @@ optimize:
     ;fi
 
 simtest: optimize
+    go clean -testcache
     cd tests/simtests && go test ./...
+
+integrationtest: optimize
+	go clean -testcache
+	cd tests/strangelove && go test ./...
 
 # ${f    <-- from variable f
 #   ##   <-- greedy front trim

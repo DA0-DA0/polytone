@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
+	wasmapp "github.com/CosmWasm/wasmd/app"
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
@@ -35,8 +36,20 @@ func SetupChain(t *testing.T, c *ibctesting.Coordinator, index int) Chain {
 	chain.StoreCodeFile("../wasms/polytone_proxy.wasm")
 	chain.StoreCodeFile("../wasms/polytone_tester.wasm")
 
+	// When the simulation environment executes a wasm message,
+	// this is what is set as the max gas. For our testing
+	// purposes, it doesn't matter that this isn't the real block
+	// gas limit, only that we will be cut off upon reaching it,
+	// as we're really trying to test that we save enough gas for
+	// the reply.
+	blockMaxGas := 2 * wasmapp.DefaultGas
+	require.NotZero(t, blockMaxGas, "should be set")
+
 	note := Instantiate(t, chain, 1, NoteInstantiate{})
-	voice := Instantiate(t, chain, 2, VoiceInstantiate{ProxyCodeId: 3})
+	voice := Instantiate(t, chain, 2, VoiceInstantiate{
+		ProxyCodeId: 3,
+		BlockMaxGas: uint64(blockMaxGas),
+	})
 	tester := Instantiate(t, chain, 4, TesterInstantiate{})
 
 	return Chain{

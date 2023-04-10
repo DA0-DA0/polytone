@@ -148,3 +148,18 @@ struct PendingCallback {
 
 const CALLBACKS: Map<u64, PendingCallback> = Map::new("polytone-callbacks");
 const SEQ: Item<u64> = Item::new("polytone-ibc-seq");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serialization() {
+        let c = Callback::Success(vec![None]);
+        assert_eq!(
+            to_binary(&c).unwrap().to_string(),
+            // base64 of `{"success":[null]}`
+            "eyJzdWNjZXNzIjpbbnVsbF19"
+        )
+    }
+}
