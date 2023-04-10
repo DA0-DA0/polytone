@@ -18,4 +18,18 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(Uint64)]
+    BlockMaxGas,
+
+    #[returns(Uint64)]
+    ProxyCodeId,
+}
+
+#[cw_serde]
+pub enum MigrateMsg {
+    WithUpdate {
+        proxy_code_id: Uint64,
+        block_max_gas: Uint64,
+    }
+}
