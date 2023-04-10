@@ -10,11 +10,8 @@ fn test_update() {
         .with_block_max_gas(Uint64::new(10))
         .build();
 
-    let block_max = suite.query_block_max_gas();
-    let proxy_code = suite.query_proxy_code_id();
-
-    assert_eq!(block_max, 10);
-    assert_eq!(proxy_code, 0);
+    suite.assert_block_max_gas(10);
+    suite.assert_proxy_code(0);
 
     let proxy_code_new = suite.store_voice_contract();
 
@@ -24,13 +21,10 @@ fn test_update() {
         50,
     )
     .unwrap();
-    
-    let block_max = suite.query_block_max_gas();
-    let proxy_code = suite.query_proxy_code_id();
 
     // assert that both fields updated succesfully
-    assert_eq!(block_max, 50);
-    assert_ne!(proxy_code, 0);
+    suite.assert_block_max_gas(50);
+    suite.assert_proxy_code(proxy_code_new);
 }
 
 #[test]
@@ -38,8 +32,7 @@ fn test_query_block_max_gas() {
     let mut suite = SuiteBuilder::default()
         .build();
 
-    let block_max_gas = suite.query_block_max_gas();
-    assert_eq!(block_max_gas, 0);
+    suite.assert_block_max_gas(0);
 
     suite.update(
         Addr::unchecked(CREATOR_ADDR),
@@ -48,8 +41,7 @@ fn test_query_block_max_gas() {
     )
     .unwrap();
 
-    let block_max_gas = suite.query_block_max_gas();
-    assert_eq!(block_max_gas, 50);
+    suite.assert_block_max_gas(50);
 }
 
 #[test]
@@ -57,8 +49,7 @@ fn test_query_proxy_code_id() {
     let mut suite = SuiteBuilder::default()
         .build();
     
-    let proxy_code_id = suite.query_proxy_code_id();
-    assert_eq!(proxy_code_id, 0);
+    suite.assert_proxy_code(0);
 
     suite.update(
         Addr::unchecked(CREATOR_ADDR),
@@ -67,6 +58,5 @@ fn test_query_proxy_code_id() {
     )
     .unwrap();
 
-    let proxy_code_id = suite.query_proxy_code_id();
-    assert_eq!(proxy_code_id, 1);
+    suite.assert_proxy_code(1);
 }

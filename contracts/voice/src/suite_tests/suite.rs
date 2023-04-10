@@ -111,3 +111,16 @@ impl Suite {
             )
     }
 }
+
+// assertion helpers
+impl Suite {
+    pub fn assert_block_max_gas(&self, val: u64) {
+        let curr = self.query_block_max_gas();
+        assert_eq!(curr, val);
+    }
+
+    pub fn assert_proxy_code(&self, val: u64) {
+        let curr = self.query_proxy_code_id();
+        assert_eq!(curr, val);
+    }
+}
