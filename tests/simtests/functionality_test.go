@@ -224,10 +224,7 @@ func TestVoiceOutOfGas(t *testing.T) {
 // callback, and then executing another message.
 //
 // This tests that we correctly save proxies and reuse them upon
-// another message being executed. Before this test, we were not
-// saving proxies after instantiating them which would cause
-// `codespace wasm: 15` (duplicate instantiation) errors upon
-// attempting to execute a second message with the same account.g
+// another message being executed.
 func TestMultipleMessages(t *testing.T) {
 	suite := NewSuite(t)
 
@@ -267,4 +264,33 @@ func TestMultipleMessages(t *testing.T) {
 	require.Equal(t, Callback{
 		Success: []string{"aGVsbG8K", ""},
 	}, callback)
+}
+
+// A note may only ever connect to a single voice. This simplifies the
+// API (as channel_id does not need to be specifed after a single
+// handshake), and simplifies the protocol.
+func TestOneVoicePerNote(t *testing.T) {
+	suite := NewSuite(t)
+	// connect note on A to voice on C. note should not connect
+	// any additional connections.
+	_ = suite.SetupDefaultPath(&suite.ChainA, &suite.ChainC)
+
+	cPort := suite.ChainB.QueryPort(suite.ChainC.Voice)
+	bPort := suite.ChainB.QueryPort(suite.ChainB.Voice)
+	aPort := suite.ChainA.QueryPort(suite.ChainA.Note)
+	_, err := suite.SetupPath(
+		bPort,
+		aPort,
+		&suite.ChainB,
+		&suite.ChainA,
+	)
+	require.ErrorContains(t,
+		err,
+		"contract is already paired with port ("+
+			cPort+
+			") on connection (connection-0), got port ("+
+			bPort+
+			") on connection (connection-1)",
+		"two voices may not be connected to the same note",
+	)
 }
