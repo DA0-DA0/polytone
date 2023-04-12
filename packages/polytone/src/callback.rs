@@ -145,18 +145,27 @@ pub fn on_ack(
         original_packet,
         ..
     }: &IbcPacketAckMsg,
-) -> Option<CosmosMsg> {
-    let Some(request) = CALLBACKS.may_load(storage, original_packet.sequence).unwrap() else {
-	return None
+) -> Option<SubMsg> {
+    let Some(request) = CALLBACKS.may_load(
+        storage,
+        original_packet.sequence
+    )
+    .unwrap() else {
+        return None
     };
     CALLBACKS.remove(storage, original_packet.sequence);
     let result = unmarshal_ack(acknowledgement);
+
     if let Callback::Execute(Ok(ExecutionResponse { executed_by, .. })) = &result {
         LOCAL_TO_REMOTE_ACCOUNT
             .save(storage, &request.initiator, executed_by)
             .expect("strings can be serialized");
     }
-    Some(callback_msg(request, result))
+
+    Some(SubMsg::reply_on_error(
+        callback_msg(request, result),
+        original_packet.sequence,
+    ))
 }
 
 /// Call on every packet timeout. Returns a callback message to execute,

@@ -93,7 +93,7 @@ pub fn ibc_packet_ack(
     Ok(IbcBasicResponse::default()
         .add_attribute("method", "ibc_packet_ack")
         .add_attribute("sequence_number", ack.original_packet.sequence.to_string())
-        .add_submessages(callback.map(|c| SubMsg::reply_on_error(c, ack.original_packet.sequence))))
+        .add_submessages(callback))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
