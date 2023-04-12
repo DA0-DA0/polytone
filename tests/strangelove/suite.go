@@ -250,7 +250,7 @@ func (s *Suite) QueryChannelsInState(chain *SuiteChain, state string) []ibc.Chan
 	}
 	openChannels := []ibc.ChannelOutput{}
 	for index := range channels {
-		if channels[index].State == "STATE_OPEN" {
+		if channels[index].State == state {
 			openChannels = append(openChannels, channels[index])
 		}
 	}
