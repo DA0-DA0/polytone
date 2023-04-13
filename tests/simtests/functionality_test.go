@@ -25,7 +25,7 @@ const (
 func TestFunctionality(t *testing.T) {
 	suite := NewSuite(t)
 
-	path := suite.SetupPath(&suite.ChainA, &suite.ChainB)
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
 
 	// Execute two messages, the first of which uses
 	// polytone-tester to set some data in the transaction
@@ -127,8 +127,8 @@ func TestFunctionality(t *testing.T) {
 func TestSameAddressDifferentChains(t *testing.T) {
 	suite := NewSuite(t)
 
-	pathCA := suite.SetupPath(&suite.ChainC, &suite.ChainA)
-	pathBA := suite.SetupPath(&suite.ChainB, &suite.ChainA)
+	pathCA := suite.SetupDefaultPath(&suite.ChainC, &suite.ChainA)
+	pathBA := suite.SetupDefaultPath(&suite.ChainB, &suite.ChainA)
 
 	friend := GenAccount(t, &suite.ChainB)
 
@@ -170,4 +170,148 @@ func TestSameAddressDifferentChains(t *testing.T) {
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)
 	require.Len(t, history, 2)
 	require.NotEqual(t, history[0], history[1])
+}
+
+// Checks that connections between two of the same modules are not
+// allowed. This checks that we are using the handshake logic, the
+// other permutations of the handshake are tested in the
+// polytone/handshake package.
+func TestHandshakeBetweenSameModule(t *testing.T) {
+	suite := NewSuite(t)
+
+	aNote := suite.ChainA.QueryPort(suite.ChainA.Note)
+	aVoice := suite.ChainA.QueryPort(suite.ChainA.Voice)
+	bNote := suite.ChainB.QueryPort(suite.ChainB.Note)
+	bVoice := suite.ChainB.QueryPort(suite.ChainB.Voice)
+
+	_, err := suite.SetupPath(aNote, bNote, &suite.ChainA, &suite.ChainB)
+	require.ErrorContains(t,
+		err,
+		"channel open try callback failed",
+		"note <-/-> note",
+	)
+	// for reasons i do not understand, if the try step fails the
+	// sequence number for the sending account does not get
+	// incremented correctly. as a bandaid, this manually corrects.
+	//
+	// FIXME: why?
+	suite.ChainB.Chain.SenderAccount.SetSequence(suite.ChainA.Chain.SenderAccount.GetSequence() + 1)
+
+	_, err = suite.SetupPath(bVoice, aVoice, &suite.ChainB, &suite.ChainA)
+	require.ErrorContains(t,
+		err,
+		"channel open try callback failed",
+		"voice <-/-> voice",
+	)
+	suite.ChainA.Chain.SenderAccount.SetSequence(suite.ChainA.Chain.SenderAccount.GetSequence() + 1)
+
+	_, err = suite.SetupPath(aVoice, bNote, &suite.ChainA, &suite.ChainB)
+	require.NoError(t, err, "voice <- -> note")
+}
+
+// Executes a message on the note chain that will run out of gas on
+// the voice chain and makes sure that an ACK + callback indicating
+// that the out-of-gas error occured is returned.
+func TestVoiceOutOfGas(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	gasMsg := `{"run_out_of_gas":{}}`
+	gasCosmosgMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(gasMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
+
+	// SDK codespace 11 is out-of-gas. See cosmos-sdk/types/errors/errors.go
+	require.NoError(t, err, "out-of-gas should not error")
+	require.Equal(t, CallbackDataExecute{
+		Error: "codespace: sdk, code: 11",
+	}, callback, "out-of-gas should return an ACK")
+}
+
+// Tests executing a message on the remote chain, checking the
+// callback, and then executing another message.
+//
+// This tests that we correctly save proxies and reuse them upon
+// another message being executed.
+func TestMultipleMessages(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
+	dataCosmosMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(dataMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+
+	noDataCosmosMsg := w.CosmosMsg{
+		Distribution: &w.DistributionMsg{
+			SetWithdrawAddress: &w.SetWithdrawAddressMsg{
+				Address: suite.ChainB.Voice.String(),
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	require.NoError(t, err)
+
+	result1 := unmarshalExecute(t, callback.Success[0].Data).Data
+	result2 := unmarshalExecute(t, callback.Success[0].Data).Data
+	require.Equal(t,
+		[]string{"aGVsbG8K", ""},
+		[2]string{string(result1), string(result2)})
+
+	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	require.NoError(t, err)
+
+	result1 = unmarshalExecute(t, callback.Success[0].Data).Data
+	result2 = unmarshalExecute(t, callback.Success[0].Data).Data
+	require.Equal(t,
+		[]string{"aGVsbG8K", ""},
+		[2]string{string(result1), string(result2)})
+}
+
+// A note may only ever connect to a single voice. This simplifies the
+// API (as channel_id does not need to be specifed after a single
+// handshake), and simplifies the protocol.
+func TestOneVoicePerNote(t *testing.T) {
+	suite := NewSuite(t)
+	// connect note on A to voice on C. note should not connect
+	// any additional connections.
+	_ = suite.SetupDefaultPath(&suite.ChainA, &suite.ChainC)
+
+	cPort := suite.ChainB.QueryPort(suite.ChainC.Voice)
+	bPort := suite.ChainB.QueryPort(suite.ChainB.Voice)
+	aPort := suite.ChainA.QueryPort(suite.ChainA.Note)
+	_, err := suite.SetupPath(
+		bPort,
+		aPort,
+		&suite.ChainB,
+		&suite.ChainA,
+	)
+	require.ErrorContains(t,
+		err,
+		"contract is already paired with port ("+
+			cPort+
+			") on connection (connection-0), got port ("+
+			bPort+
+			") on connection (connection-1)",
+		"two voices may not be connected to the same note",
+	)
 }

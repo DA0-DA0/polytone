@@ -1,8 +1,10 @@
 package simtests
 
 import (
+	"math/rand"
 	"testing"
 
+	wasmapp "github.com/CosmWasm/wasmd/app"
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
@@ -19,6 +21,8 @@ type Chain struct {
 }
 
 type Suite struct {
+	t *testing.T
+
 	Coordinator *ibctesting.Coordinator
 	ChainA      Chain
 	ChainB      Chain
@@ -32,8 +36,20 @@ func SetupChain(t *testing.T, c *ibctesting.Coordinator, index int) Chain {
 	chain.StoreCodeFile("../wasms/polytone_proxy.wasm")
 	chain.StoreCodeFile("../wasms/polytone_tester.wasm")
 
+	// When the simulation environment executes a wasm message,
+	// this is what is set as the max gas. For our testing
+	// purposes, it doesn't matter that this isn't the real block
+	// gas limit, only that we will be cut off upon reaching it,
+	// as we're really trying to test that we save enough gas for
+	// the reply.
+	blockMaxGas := 2 * wasmapp.DefaultGas
+	require.NotZero(t, blockMaxGas, "should be set")
+
 	note := Instantiate(t, chain, 1, NoteInstantiate{})
-	voice := Instantiate(t, chain, 2, VoiceInstantiate{ProxyCodeId: 3})
+	voice := Instantiate(t, chain, 2, VoiceInstantiate{
+		ProxyCodeId: 3,
+		BlockMaxGas: uint64(blockMaxGas),
+	})
 	tester := Instantiate(t, chain, 4, TesterInstantiate{})
 
 	return Chain{
@@ -51,6 +67,7 @@ func NewSuite(t *testing.T) Suite {
 	chainC := SetupChain(t, coordinator, 2)
 
 	return Suite{
+		t:           t,
 		Coordinator: coordinator,
 		ChainA:      chainA,
 		ChainB:      chainB,
@@ -61,23 +78,118 @@ func NewSuite(t *testing.T) Suite {
 func ChannelConfig(port string) *sdkibctesting.ChannelConfig {
 	return &sdkibctesting.ChannelConfig{
 		PortID:  port,
-		Version: "polytone",
+		Version: "polytone-1",
 		Order:   channeltypes.UNORDERED,
 	}
 }
 
-func (s *Suite) SetupPath(
-	chainA,
-	chainB *Chain,
-) *ibctesting.Path {
-	aPort := chainA.Chain.ContractInfo(chainA.Note).IBCPortID
-	bPort := chainB.Chain.ContractInfo(chainB.Voice).IBCPortID
+func (c *Chain) QueryPort(contract sdk.AccAddress) string {
+	return c.Chain.ContractInfo(contract).IBCPortID
+}
 
+func (s *Suite) SetupPath(aPort, bPort string, chainA, chainB *Chain) (*ibctesting.Path, error) {
 	path := ibctesting.NewPath(chainA.Chain, chainB.Chain)
 	path.EndpointA.ChannelConfig = ChannelConfig(aPort)
 	path.EndpointB.ChannelConfig = ChannelConfig(bPort)
-	s.Coordinator.Setup(path)
-	return path
+
+	// the ibctesting version of SetupPath does not return an
+	// error, so we write it ourselves.
+	setupClients := func(a, b *ibctesting.Endpoint) error {
+		err := a.CreateClient()
+		if err != nil {
+			return err
+		}
+		err = b.CreateClient()
+		if err != nil {
+			return err
+		}
+		return nil
+
+	}
+	createConnections := func(a, b *ibctesting.Endpoint) error {
+		err := a.ConnOpenInit()
+		if err != nil {
+			return err
+		}
+		err = b.ConnOpenTry()
+		if err != nil {
+			return err
+		}
+		err = a.ConnOpenAck()
+		if err != nil {
+			return err
+		}
+		err = b.ConnOpenConfirm()
+		if err != nil {
+			return err
+		}
+		err = a.UpdateClient()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	createChannels := func(a, b *ibctesting.Endpoint) error {
+		err := a.ChanOpenInit()
+		if err != nil {
+			return err
+		}
+		err = b.ChanOpenTry()
+		if err != nil {
+			return err
+		}
+		err = a.ChanOpenAck()
+		if err != nil {
+			return err
+		}
+		err = b.ChanOpenConfirm()
+		if err != nil {
+			return err
+		}
+		err = a.UpdateClient()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	err := setupClients(path.EndpointA, path.EndpointB)
+	if err != nil {
+		return nil, err
+	}
+	err = createConnections(path.EndpointA, path.EndpointB)
+	if err != nil {
+		return nil, err
+	}
+	err = createChannels(path.EndpointA, path.EndpointB)
+	if err != nil {
+		return nil, err
+	}
+	return path, nil
+}
+
+func (s *Suite) SetupDefaultPath(
+	chainA,
+	chainB *Chain,
+) *ibctesting.Path {
+	// randomize the direction of the handshake. this should be a
+	// no-op for a functional handshake.
+	choice := rand.Intn(2)
+
+	aPort := chainA.QueryPort(chainA.Note)
+	bPort := chainB.QueryPort(chainB.Voice)
+	if choice == 0 {
+		// b -> a
+		path, err := s.SetupPath(bPort, aPort, chainB, chainA)
+		require.NoError(s.t, err)
+		return path
+
+	} else {
+		// a -> b
+		path, err := s.SetupPath(aPort, bPort, chainA, chainB)
+		require.NoError(s.t, err)
+		return path
+	}
 }
 
 func (c *Chain) MintBondedDenom(t *testing.T, to sdk.AccAddress) {

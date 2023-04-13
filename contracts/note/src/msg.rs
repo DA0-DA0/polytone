@@ -6,8 +6,9 @@ use polytone::callback::CallbackRequest;
 #[cw_serde]
 pub struct InstantiateMsg {
     /// This contract pairs with the first voice module that a relayer
-    /// connects it with, or the pair instantiated here. Once it has a
-    /// pair, it will never handshake with a different voice module.
+    /// connects it with, or the pair specified here. Once it has a
+    /// pair, it will never handshake with a different voice module,
+    /// even after channel closure.
     pub pair: Option<Pair>,
 }
 
@@ -46,8 +47,7 @@ pub enum QueryMsg {
 }
 
 /// This contract's voice. There is one voice per note, and many notes
-/// per voice. This note pairs with the first voice it handshakes
-/// with.
+/// per voice.
 #[cw_serde]
 pub struct Pair {
     pub connection_id: String,

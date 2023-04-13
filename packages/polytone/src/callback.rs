@@ -170,3 +170,18 @@ pub enum CallbackRequestType {
 
 const CALLBACKS: Map<u64, PendingCallback> = Map::new("polytone-callbacks");
 const SEQ: Item<u64> = Item::new("polytone-ibc-seq");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serialization() {
+        let c = Callback::Query(CallbackData::Success(vec![to_binary("").unwrap()]));
+        assert_eq!(
+            to_binary(&c).unwrap().to_string(),
+            // base64 of `{"query":{"success":["IiI="]}}` | "IiI=" == ""
+            "eyJxdWVyeSI6eyJzdWNjZXNzIjpbIklpST0iXX19"
+        )
+    }
+}
