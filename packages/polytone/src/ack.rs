@@ -1,62 +1,61 @@
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{from_binary, to_binary, Binary, IbcAcknowledgement, SubMsgResponse};
+use cosmwasm_std::{from_binary, to_binary, Binary, IbcAcknowledgement, SubMsgResponse, Uint64};
 
 pub use crate::callback::Callback;
-use crate::callback::{CallbackData, RequestType};
+use crate::callback::{ErrorResponse, ExecutionResponse};
 
+/// wasmd 0.32+ will not return a hardcoded ICS-20 ACK if
+/// ibc_packet_receive errors [1] so we can safely use an ACK format
+/// that is not ICS-20 error-variant compatible.
+///
+/// [1]: https://github.com/CosmWasm/wasmd/issues/1305#issuecomment-1489871618
 pub type Ack = Callback;
 
-#[cw_serde]
-pub struct InterlError(String);
-
 /// Serializes an ACK-SUCCESS containing the provided data.
-pub fn ack_success_query(c: Vec<Binary>) -> Binary {
-    to_binary(&Callback::Query(CallbackData::Success(c))).unwrap()
+pub fn ack_query_success(result: Vec<Binary>) -> Binary {
+    to_binary(&Callback::Query(Ok(result))).unwrap()
 }
 
-/// Serializes an ACK-SUCCESS containing the provided data.
-pub fn ack_success_execute(c: Vec<SubMsgResponse>) -> Binary {
-    to_binary(&Callback::Execute(CallbackData::Success(c))).unwrap()
+/// Serializes an ACK-SUCCESS for a query that failed.
+pub fn ack_query_fail(message_index: Uint64, error: String) -> Binary {
+    to_binary(&Callback::Query(Err(ErrorResponse {
+        message_index,
+        error,
+    })))
+    .unwrap()
+}
+
+/// Serializes an ACK-SUCCESS for execution that succeded.
+pub fn ack_execute_success(result: Vec<SubMsgResponse>, executed_by: String) -> Binary {
+    to_binary(&Callback::Execute(Ok(ExecutionResponse {
+        result,
+        executed_by,
+    })))
+    .unwrap()
+}
+
+/// Serializes an ACK-SUCCESS for execution that failed.
+pub fn ack_execute_fail(message_index: Uint64, error: String) -> Binary {
+    to_binary(&Callback::Execute(Err(ErrorResponse {
+        message_index,
+        error,
+    })))
+    .unwrap()
 }
 
 /// Serializes an ACK-FAIL containing the provided error.
 pub fn ack_fail(err: String) -> Binary {
-    to_binary(&InterlError(err)).unwrap()
+    to_binary(&Callback::InternalError(err)).unwrap()
 }
 
 /// Unmarshals an ACK from an acknowledgement returned by the SDK. If
 /// the returned acknowledgement can not be parsed into an ACK,
 /// err(base64(ack)) is returned.
-///
-/// # Note
-///
-/// Occasionally you will receive ACKs from the SDK, and not
-/// your counterparty contract. I do not know all cases this will
-/// occur, but I do know it happens if a field on the packet data is
-/// set to an empty string. That being the case, the SDK will return
-/// an error in the form:
-///
-/// ```json
-/// {"error":"Empty attribute value. Key: <key w/ empty string>: invalid event"}
-/// ```
-///
-/// This means that even if you know all of the error types returned
-/// by your counterparty contract, unless you know all the error types
-/// the SDK will throw, you can't assume error strings will be regular
-/// for unmarshaled ACKs.
-///
-/// For an example of this, see this integration test:
-///
-/// <https://github.com/public-awesome/ics721/blob/3af19e421a95aec5291a0cabbe796c58698ac97f/e2e/adversarial_test.go#L274-L285>
-pub fn unmarshal_ack(ack: &IbcAcknowledgement, request_type: RequestType) -> Ack {
-    if let Ok(err) = from_binary::<InterlError>(&ack.data) {
-        return match request_type {
-            RequestType::Execute => Callback::Execute(CallbackData::Error(err.0)),
-            RequestType::Query => Callback::Query(CallbackData::Error(err.0)),
-        };
-    }
-    from_binary(&ack.data).unwrap_or_else(|_| match request_type {
-        RequestType::Execute => Callback::Execute(CallbackData::Error(ack.data.to_base64())),
-        RequestType::Query => Callback::Query(CallbackData::Error(ack.data.to_base64())),
+pub fn unmarshal_ack(ack: &IbcAcknowledgement) -> Ack {
+    from_binary(&ack.data).unwrap_or_else(|e| {
+        Callback::InternalError(format!(
+            "error unmarshaling ack ({}): {}",
+            ack.data.to_base64(),
+            e
+        ))
     })
 }

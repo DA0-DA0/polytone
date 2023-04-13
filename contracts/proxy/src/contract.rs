@@ -5,7 +5,8 @@ use cosmwasm_std::{
     SubMsgResponse, SubMsgResult,
 };
 use cw2::set_contract_version;
-use polytone::ack::ack_success_execute;
+use polytone::ack::ack_execute_success;
+use polytone::error_reply::ErrorReply;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -32,7 +33,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -47,7 +48,12 @@ pub fn execute(
                         msgs.into_iter()
                             .enumerate()
                             .map(|(id, msg)| SubMsg::reply_always(msg, id as u64)),
-                    ))
+                    )
+                    // handle `msgs.is_empty()` case
+                    .set_data(ack_execute_success(
+                        vec![],
+                        env.contract.address.into_string(),
+                    )))
             } else {
                 Err(ContractError::NotInstantiator)
             }
@@ -63,28 +69,73 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     let mut collector = COLLECTOR.load(deps.storage)?;
 
     match msg.result {
-        SubMsgResult::Err(error) => Err(ContractError::ExecutionFailure { idx: msg.id, error }),
+        SubMsgResult::Err(error) => Err(ContractError::Reply(ErrorReply::new(msg.id, error))),
         SubMsgResult::Ok(res) => {
             collector[msg.id as usize] = Some(res);
 
             if msg.id + 1 == collector.len() as u64 {
                 COLLECTOR.remove(deps.storage);
-                // Unwrap the options as we set it to Some
                 let collector = collector
                     .into_iter()
                     .map(|res| res.unwrap())
                     .collect::<Vec<SubMsgResponse>>();
                 Ok(Response::default()
                     .add_attribute("callbacks_processed", (msg.id + 1).to_string())
-                    .set_data(ack_success_execute(collector)))
+                    .set_data(ack_execute_success(
+                        collector,
+                        env.contract.address.into_string(),
+                    )))
             } else {
                 COLLECTOR.save(deps.storage, &collector)?;
                 Ok(Response::default())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{
+        from_binary,
+        testing::{mock_dependencies, mock_env},
+        Uint64,
+    };
+
+    use polytone::callback::ErrorResponse;
+
+    use super::*;
+
+    /// When we are returning an execution failure, the error string
+    /// should be exactly the same as the binary representation of a
+    /// `polytone::callbck::ErrorResponse`.
+    #[test]
+    fn test_error_serialization() {
+        let mut deps = mock_dependencies();
+        COLLECTOR
+            .save(deps.as_mut().storage, &vec![None; 1])
+            .unwrap();
+        let error = reply(
+            deps.as_mut(),
+            mock_env(),
+            Reply {
+                id: 1,
+                result: SubMsgResult::Err("hello".to_string()),
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        let error_response = Binary::from_base64(&error).unwrap();
+        let error_response: ErrorResponse = from_binary(&error_response).unwrap();
+        assert_eq!(
+            error_response,
+            ErrorResponse {
+                message_index: Uint64::new(1),
+                error: "hello".to_string()
+            }
+        )
     }
 }

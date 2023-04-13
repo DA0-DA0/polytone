@@ -44,6 +44,12 @@ pub enum QueryMsg {
     /// The contract's corresponding voice on a remote chain.
     #[returns(Option<Pair>)]
     Pair,
+    /// Returns the remote address for the provided local address. If
+    /// no account exists, returns `None`. An account can be created
+    /// by calling `ExecuteMsg::Execute` with the sender being
+    /// `local_address`.
+    #[returns(Option<String>)]
+    RemoteAddress { local_address: String },
 }
 
 /// This contract's voice. There is one voice per note, and many notes

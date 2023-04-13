@@ -1,6 +1,12 @@
 use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
+use polytone::{callback, error_reply::ErrorReply};
 use thiserror::Error;
+
+// Take care when adding variants to this type that an attacker can't
+// create an error that will deserailize into a base64-encoded
+// `ExecutionFailure`, as the string representation of
+// `ExecutionFailure` is a base64-encoded, JSON `ExecutionFailure`.
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -8,11 +14,11 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error(transparent)]
-    Reply(#[from] ParseReplyError),
+    Parse(#[from] ParseReplyError),
+
+    #[error(transparent)]
+    Reply(ErrorReply<callback::ErrorResponse>),
 
     #[error("caller must be the contract instantiator")]
     NotInstantiator,
-
-    #[error("host chain, msg ({idx}), error ({error})")]
-    ExecutionFailure { idx: u64, error: String },
 }

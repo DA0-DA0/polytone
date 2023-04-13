@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, StdResult,
-    Storage, SubMsgResponse, WasmMsg,
+    Storage, SubMsgResponse, Uint64, WasmMsg,
 };
 use cw_storage_plus::{Item, Map};
 
@@ -19,7 +19,7 @@ use crate::ack::unmarshal_ack;
 /// ```
 #[cw_serde]
 pub struct CallbackMessage {
-    /// Initaitor on the controller chain.
+    /// Initaitor on the note chain.
     pub initiator: Addr,
     /// Message sent by the initaitor. This _must_ be base64 encoded
     /// or execution will fail.
@@ -30,30 +30,40 @@ pub struct CallbackMessage {
 
 #[cw_serde]
 pub enum Callback {
-    /// Callback data from a query.
-    Query(CallbackData<Vec<Binary>>),
-    /// Callback data from message execution.
-    Execute(CallbackData<Vec<SubMsgResponse>>),
+    Query(Result<QueryResponse, ErrorResponse>),
+    Execute(Result<ExecutionResponse, ErrorResponse>),
+
+    /// An internal error occured while processing a callback. For
+    /// example, this error would occur if parsing the packet sent by
+    /// a note module failed at the voice module. This error should
+    /// never happen for a valid note <-> voice connection.
+    InternalError(String),
+}
+
+/// The result of executing a query. For successful execution, index
+/// `i` corresponds to the raw query result of performing query
+/// `i`. Specifically, it is the result of running
+/// `deps.querier.raw_query` with message `i`.
+pub type QueryResponse = Vec<Binary>;
+
+#[cw_serde]
+pub struct ExecutionResponse {
+    /// The address on the remote chain that executed the messages.
+    pub executed_by: String,
+    /// Index `i` corresponds to the result of executing the `i`th
+    /// message.
+    pub result: Vec<SubMsgResponse>,
 }
 
 #[cw_serde]
-pub enum CallbackData<T> {
-    /// Data returned from the host chain. Index n corresponds to the
-    /// result of executing the nth message/query.
-    Success(T),
-    /// The first error that occured while executing the requested
-    /// messages/queries.
-    Error(String),
+pub struct ErrorResponse {
+    /// The index of the message who's execution failed.
+    pub message_index: Uint64,
+    /// The error that occured executing the message.
+    pub error: String,
 }
 
-/// Serialized into the error string in the event of a timeout sending
-/// the message.
-#[cw_serde]
-pub enum Timeout {
-    Timeout,
-}
-
-/// A request for a callback. Safe for use in external APIs.
+/// A request for a callback.
 #[cw_serde]
 pub struct CallbackRequest {
     pub receiver: String,
@@ -64,14 +74,13 @@ pub struct CallbackRequest {
 //// number tracking accurate.
 ///
 /// Requests that a callback be returned for the next IBC message that
-/// is sent. `on_ibc_send` must be called before this method in
-/// any functions that send IBC packets.
+/// is sent.
 pub fn request_callback(
     storage: &mut dyn Storage,
     api: &dyn Api,
     initiator: Addr,
     request: Option<CallbackRequest>,
-    request_type: RequestType,
+    request_type: CallbackRequestType,
 ) -> StdResult<()> {
     let seq = SEQ.may_load(storage)?.unwrap_or_default() + 1;
     SEQ.save(storage, &seq)?;
@@ -95,7 +104,7 @@ pub fn request_callback(
     Ok(())
 }
 
-fn callback_msg(pc: PendingCallback, c: Callback) -> CosmosMsg {
+fn callback_msg(pc: PendingCallback, result: Callback) -> CosmosMsg {
     /// Gives the executed message a "callback" tag:
     /// `{ "callback": CallbackMsg }`.
     #[cw_serde]
@@ -107,7 +116,7 @@ fn callback_msg(pc: PendingCallback, c: Callback) -> CosmosMsg {
         msg: to_binary(&C::Callback(CallbackMessage {
             initiator: pc.initiator,
             initiator_msg: pc.initiator_msg,
-            result: c,
+            result,
         }))
         .expect("fields are known to be serializable"),
         funds: vec![],
@@ -129,7 +138,12 @@ pub fn on_ack(
 	return None
     };
     CALLBACKS.remove(storage, original_packet.sequence);
-    let result = unmarshal_ack(acknowledgement, request.request_type.clone());
+    let result = unmarshal_ack(acknowledgement);
+    if let Callback::Execute(Ok(ExecutionResponse { executed_by, .. })) = &result {
+        LOCAL_TO_REMOTE_ACCOUNT
+            .save(storage, &request.initiator, executed_by)
+            .expect("strings can be serialized");
+    }
     Some(callback_msg(request, result))
 }
 
@@ -143,9 +157,13 @@ pub fn on_timeout(
 	return None
     };
     CALLBACKS.remove(storage, packet.sequence);
+    let response = ErrorResponse {
+        message_index: Uint64::zero(),
+        error: "timeout".to_string(),
+    };
     let result = match request.request_type {
-        RequestType::Execute => Callback::Execute(CallbackData::Error("timeout".to_string())),
-        RequestType::Query => Callback::Query(CallbackData::Error("timeout".to_string())),
+        CallbackRequestType::Execute => Callback::Execute(Err(response)),
+        CallbackRequestType::Query => Callback::Query(Err(response)),
     };
     Some(callback_msg(request, result))
 }
@@ -154,17 +172,25 @@ pub fn on_timeout(
 struct PendingCallback {
     initiator: Addr,
     initiator_msg: Binary,
+    /// The address that will receive the callback on completion.
     receiver: Addr,
-    request_type: RequestType,
+    /// Used to return the appropriate callback type during timeouts.
+    request_type: CallbackRequestType,
 }
 
+/// Disembiguates between a callback for remote message execution and
+/// queries.
 #[cw_serde]
-pub enum RequestType {
+pub enum CallbackRequestType {
     Execute,
     Query,
 }
 
+/// (local_account) -> remote_account
+pub const LOCAL_TO_REMOTE_ACCOUNT: Map<&Addr, String> = Map::new("polytone-l2r");
+/// (sequence_number) -> callback
 const CALLBACKS: Map<u64, PendingCallback> = Map::new("polytone-callbacks");
+/// The number of packets sent so far.
 const SEQ: Item<u64> = Item::new("polytone-ibc-seq");
 
 #[cfg(test)]

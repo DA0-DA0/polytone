@@ -8,9 +8,12 @@ use cosmwasm_std::{
 };
 
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
-
 use polytone::{
-    ack::ack_fail, callback::Callback, handshake::voice, ibc::validate_order_and_version,
+    ack::{ack_execute_fail, ack_execute_success, ack_fail},
+    callback::{Callback, ErrorResponse},
+    error_reply::ErrorReply,
+    handshake::voice,
+    ibc::validate_order_and_version,
 };
 
 use crate::{
@@ -114,7 +117,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 let data = parse_reply_execute_data(msg.clone())
                     .expect("execution succeded")
                     .data
-                    .expect("proxy should set data");
+                    .expect("reply_forward_data sets data");
                 match from_binary::<Callback>(&data) {
                     Ok(_) => Response::default().set_data(data),
                     Err(e) => Response::default()
@@ -122,14 +125,45 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 }
             }
         }),
-        REPLY_FORWARD_DATA => {
-            let MsgExecuteContractResponse { data } = parse_reply_execute_data(msg)?;
-            let response = Response::default().add_attribute("method", "reply_forward_data");
-            Ok(match data {
-                Some(data) => response.set_data(data),
-                None => response,
-            })
-        }
+        REPLY_FORWARD_DATA => match msg.result {
+            // Executing the requested messages succeded. Because more
+            // than one message can be dispatched (instantiate proxy &
+            // execute proxy), CosmWasm will not automatically
+            // percolate the data up so we do so ourselves. Because we
+            // don't reply on instantiation, the data here is the
+            // result of executing messages on the proxy.
+            SubMsgResult::Ok(_) => {
+                let MsgExecuteContractResponse { data } = parse_reply_execute_data(msg)?;
+                let response =
+                    Response::default().add_attribute("method", "reply_forward_data_success");
+                Ok(match data {
+                    Some(data) => response.set_data(data),
+                    None => unreachable!("proxy will always set data"),
+                })
+            }
+            // There was an error executing the messages. There are
+            // two ways this could have happened:
+            //
+            // 1. An internal error occured.
+            // 2. Executing submessages failed.
+            //
+            // In the second case, the proxy sets the error to a
+            // base64 encoded `ErrorResponse`. In the first, it will
+            // be an unspecified string.
+            //
+            // For the first case we want to return an ACK-fail with
+            // an internal error. To do this, we try to parse an
+            // `ErrorResponse` and if that fails error which will
+            // percolate up to `REPLY_ACK` where the ACK-FAIL will be
+            // written. If parsing succedes the error response is put
+            // into an ACK-SUCCESS.
+            SubMsgResult::Err(err) => {
+                let response: ErrorResponse = ErrorReply::from_error(&err)?;
+                Ok(Response::default()
+                    .add_attribute("method", "reply_forward_data_error")
+                    .set_data(ack_execute_fail(response.message_index, response.error)))
+            }
+        },
         _ => unreachable!("unknown reply ID"),
     }
 }

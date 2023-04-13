@@ -2,11 +2,11 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, instantiate2_address, to_binary, to_vec, Binary, CodeInfoResponse, ContractResult,
-    Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, SubMsg, SystemResult, WasmMsg,
+    Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, SystemResult, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 
-use polytone::ack::ack_success_query;
+use polytone::ack::{ack_query_fail, ack_query_success};
 use polytone::ibc::{Msg, Packet};
 
 use crate::error::ContractError;
@@ -53,25 +53,25 @@ pub fn execute(
                     Msg::Query { msgs } => {
                         let mut results = Vec::with_capacity(msgs.len());
                         for msg in msgs {
-                            let qr = deps.querier.raw_query(&to_vec(&msg)?);
-                            match qr {
-                                SystemResult::Ok(ContractResult::Err(e)) => {
-                                    return Err(StdError::generic_err(format!(
-                                        "query contract: {e}"
-                                    ))
-                                    .into())
+                            let query_result = deps.querier.raw_query(&to_vec(&msg)?);
+                            let error = match query_result {
+                                SystemResult::Ok(ContractResult::Err(error)) => error,
+                                SystemResult::Err(error) => error.to_string(),
+                                SystemResult::Ok(ContractResult::Ok(res)) => {
+                                    results.push(res);
+                                    continue;
                                 }
-                                SystemResult::Err(e) => {
-                                    return Err(
-                                        StdError::generic_err(format!("query system: {e}")).into()
-                                    )
-                                }
-                                SystemResult::Ok(ContractResult::Ok(res)) => results.push(res),
-                            }
+                            };
+                            return Ok(Response::default()
+                                .add_attribute("method", "rx_query_fail")
+                                .set_data(ack_query_fail(
+                                    Uint64::new(results.len() as u64),
+                                    error,
+                                )));
                         }
                         Ok(Response::default()
                             .add_attribute("method", "rx_query")
-                            .set_data(ack_success_query(results)))
+                            .set_data(ack_query_success(results)))
                     }
                     Msg::Execute { msgs } => {
                         let (instantiate, proxy) = if let Some(proxy) = SENDER_TO_PROXY.may_load(
@@ -113,7 +113,7 @@ pub fn execute(
                         Ok(Response::default()
                             .add_attribute("method", "rx_execute")
                             .add_messages(instantiate)
-                            .add_submessage(SubMsg::reply_on_success(
+                            .add_submessage(SubMsg::reply_always(
                                 WasmMsg::Execute {
                                     contract_addr: proxy.into_string(),
                                     msg: to_binary(&polytone_proxy::msg::ExecuteMsg::Proxy {
@@ -130,6 +130,9 @@ pub fn execute(
     }
 }
 
+/// Generates the salt used to generate an address for a user's
+/// account.
+///
 /// `local_channel` is not attacker controlled and protects from
 /// collision from an attacker generated duplicate
 /// chain. `remote_channel` ensures that two different modules on the
@@ -137,6 +140,7 @@ pub fn execute(
 /// `remote_sender`.
 fn salt(local_connection: &str, counterparty_port: &str, remote_sender: &str) -> Binary {
     use sha2::{Digest, Sha512};
+    // the salt can be a max of 64 bytes (512 bits).
     let hash = Sha512::default()
         .chain_update(local_connection.as_bytes())
         .chain_update(counterparty_port.as_bytes())
