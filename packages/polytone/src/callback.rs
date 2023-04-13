@@ -71,7 +71,7 @@ pub fn request_callback(
     api: &dyn Api,
     initiator: Addr,
     request: Option<CallbackRequest>,
-    request_type: RequestType,
+    request_type: CallbackRequestType,
 ) -> StdResult<()> {
     let seq = SEQ.may_load(storage)?.unwrap_or_default() + 1;
     SEQ.save(storage, &seq)?;
@@ -144,8 +144,10 @@ pub fn on_timeout(
     };
     CALLBACKS.remove(storage, packet.sequence);
     let result = match request.request_type {
-        RequestType::Execute => Callback::Execute(CallbackData::Error("timeout".to_string())),
-        RequestType::Query => Callback::Query(CallbackData::Error("timeout".to_string())),
+        CallbackRequestType::Execute => {
+            Callback::Execute(CallbackData::Error("timeout".to_string()))
+        }
+        CallbackRequestType::Query => Callback::Query(CallbackData::Error("timeout".to_string())),
     };
     Some(callback_msg(request, result))
 }
@@ -155,11 +157,13 @@ struct PendingCallback {
     initiator: Addr,
     initiator_msg: Binary,
     receiver: Addr,
-    request_type: RequestType,
+    request_type: CallbackRequestType,
 }
 
+/// Disambiguates between a callback for remote message execution and
+/// queries, used internally.
 #[cw_serde]
-pub enum RequestType {
+pub enum CallbackRequestType {
     Execute,
     Query,
 }

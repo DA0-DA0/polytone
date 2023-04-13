@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use polytone::callback::RequestType;
+use polytone::callback::CallbackRequestType;
 use polytone::{callback, ibc};
 
 use crate::error::ContractError;
@@ -52,7 +52,7 @@ pub fn execute(
             ibc::Msg::Execute { msgs },
             callback,
             timeout_seconds,
-            RequestType::Execute,
+            CallbackRequestType::Execute,
         ),
         ExecuteMsg::Query {
             msgs,
@@ -62,7 +62,7 @@ pub fn execute(
             ibc::Msg::Query { msgs },
             Some(callback),
             timeout_seconds,
-            RequestType::Query,
+            CallbackRequestType::Query,
         ),
     };
 

@@ -57,7 +57,6 @@ func TestFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// callbackExecute := suite.parseCallbackExecute(t, callback)
 	require.Len(t, callbackExecute.Success, 2)
 	require.Len(t, callbackExecute.Error, 0)
 
