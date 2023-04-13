@@ -63,7 +63,7 @@ func TestFunctionality(t *testing.T) {
 	result1 := unmarshalExecute(t, callbackExecute.Success[0].Data).Data
 	result2 := unmarshalExecute(t, callbackExecute.Success[1].Data).Data
 
-	require.Equal(t, "hello", string(result1))
+	require.Equal(t, string(testText), string(result1))
 	require.Equal(t, "", string(result2))
 
 	balanceQuery := w.QueryRequest{
@@ -249,7 +249,7 @@ func TestMultipleMessages(t *testing.T) {
 	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
 
 	accountA := GenAccount(t, &suite.ChainA)
-	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
+	dataMsg := fmt.Sprintf(`{"hello": { "data": "%s" }}`, testBinary)
 	dataCosmosMsg := w.CosmosMsg{
 		Wasm: &w.WasmMsg{
 			Execute: &w.ExecuteMsg{
@@ -272,19 +272,19 @@ func TestMultipleMessages(t *testing.T) {
 	require.NoError(t, err)
 
 	result1 := unmarshalExecute(t, callback.Success[0].Data).Data
-	result2 := unmarshalExecute(t, callback.Success[0].Data).Data
+	result2 := unmarshalExecute(t, callback.Success[1].Data).Data
 	require.Equal(t,
-		[]string{"aGVsbG8K", ""},
-		[2]string{string(result1), string(result2)})
+		[]string{string(testText), ""},
+		[]string{string(result1), string(result2)})
 
 	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 	require.NoError(t, err)
 
 	result1 = unmarshalExecute(t, callback.Success[0].Data).Data
-	result2 = unmarshalExecute(t, callback.Success[0].Data).Data
+	result2 = unmarshalExecute(t, callback.Success[1].Data).Data
 	require.Equal(t,
-		[]string{"aGVsbG8K", ""},
-		[2]string{string(result1), string(result2)})
+		[]string{string(testText), ""},
+		[]string{string(result1), string(result2)})
 }
 
 // A note may only ever connect to a single voice. This simplifies the
