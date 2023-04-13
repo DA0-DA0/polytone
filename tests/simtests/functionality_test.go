@@ -315,3 +315,32 @@ func TestOneVoicePerNote(t *testing.T) {
 		"two voices may not be connected to the same note",
 	)
 }
+
+func TestInstantiateExecute(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	msg, err := json.Marshal(TesterInstantiate{})
+	require.NoError(t, err)
+	initCosmosMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Instantiate: &w.InstantiateMsg{
+				CodeID: 4,
+				Msg:    msg,
+				Funds:  []w.Coin{},
+				Label:  "test",
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{initCosmosMsg})
+	require.NoError(t, err)
+	require.Empty(t, callback.Error, "callback should not error")
+	response := unmarshalInstantiate(t, callback.Success[0].Data)
+
+	// address should be: cosmos1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqa0dr5q
+	// But because it can change in the future, we just check its not empty
+	require.NotEmpty(t, response.Address, "address should not be empty")
+}

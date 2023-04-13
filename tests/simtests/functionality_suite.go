@@ -31,6 +31,9 @@ type Suite struct {
 
 func SetupChain(t *testing.T, c *ibctesting.Coordinator, index int) Chain {
 	chain := c.GetChain(sdkibctesting.GetChainID(index))
+	// because we manually set code ids in the tests, we need to
+	// make sure this order is preserved and new contracts
+	// added below existing contracts.
 	chain.StoreCodeFile("../wasms/polytone_note.wasm")
 	chain.StoreCodeFile("../wasms/polytone_voice.wasm")
 	chain.StoreCodeFile("../wasms/polytone_proxy.wasm")
