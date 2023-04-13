@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
     IbcChannelOpenResponse, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Never, Reply, Response, SubMsg, SubMsgResult,
+    IbcReceiveResponse, Never, Reply, Response, SubMsg,
 };
 use polytone::{callback, handshake::note};
 
@@ -112,10 +112,5 @@ pub fn ibc_packet_timeout(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let sequence = msg.id;
-    match msg.result {
-        SubMsgResult::Err(e) => Ok(Response::default()
-            .add_attribute("callback_error", sequence.to_string())
-            .add_attribute("error", e)),
-        SubMsgResult::Ok(_) => unreachable!("callbacks reply_on_error"),
-    }
+    Ok(callback::on_reply(sequence, msg.result))
 }

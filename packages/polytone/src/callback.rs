@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, StdResult,
-    Storage, SubMsgResponse, Uint64, WasmMsg,
+    to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, Response,
+    StdResult, Storage, SubMsgResponse, Uint64, WasmMsg,
 };
 use cw_storage_plus::{Item, Map};
 
@@ -162,10 +162,9 @@ pub fn on_ack(
             .expect("strings can be serialized");
     }
 
-    Some(SubMsg::reply_on_error(
-        callback_msg(request, result),
-        original_packet.sequence,
-    ))
+    let submsg = SubMsg::reply_on_error(callback_msg(request, result), original_packet.sequence);
+
+    Some(submsg)
 }
 
 /// Call on every packet timeout. Returns a callback message to execute,
@@ -187,6 +186,15 @@ pub fn on_timeout(
         })),
     };
     Some(callback_msg(request, result))
+}
+
+pub fn on_reply(sequence_id: u64, result: SubMsgResult) -> Response {
+    match result {
+        SubMsgResult::Err(e) => Response::default()
+            .add_attribute("callback_error", sequence_id.to_string())
+            .add_attribute("error", e),
+        SubMsgResult::Ok(_) => unreachable!("callbacks reply_on_error"),
+    }
 }
 
 #[cw_serde]
