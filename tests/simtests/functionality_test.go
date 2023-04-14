@@ -58,11 +58,11 @@ func TestFunctionality(t *testing.T) {
 		t.Fatal(err)
 	}
 	// callbackExecute := suite.parseCallbackExecute(t, callback)
-	require.Len(t, callbackExecute.Success, 2)
+	require.Len(t, callbackExecute.Ok, 2)
 	require.Len(t, callbackExecute.Error, 0)
 
-	result1 := unmarshalExecute(t, callbackExecute.Success[0].Data).Data
-	result2 := unmarshalExecute(t, callbackExecute.Success[1].Data).Data
+	result1 := unmarshalExecute(t, callbackExecute.Ok[0].Data).Data
+	result2 := unmarshalExecute(t, callbackExecute.Ok[1].Data).Data
 
 	require.Equal(t, "hello", string(result1))
 	require.Equal(t, "", string(result2))
@@ -100,11 +100,11 @@ func TestFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Len(t, callbackQuery.Success, 2)
+	require.Len(t, callbackQuery.Ok, 2)
 
 	require.Equal(t,
 		CallbackDataQuery{
-			Success: [][]byte{
+			Ok: [][]byte{
 				[]byte(`{"amount":{"denom":"stake","amount":"100"}}`), // contracts get made with 100 coins.
 				[]byte(`{"history":[]}`)},
 		}, callbackQuery)
@@ -164,8 +164,8 @@ func TestSameAddressDifferentChains(t *testing.T) {
 
 	require.Equal(t, "", b.Error)
 	require.Equal(t, "", c.Error)
-	require.Equal(t, []byte(nil), b.Success[0].Data)
-	require.Equal(t, []byte(nil), c.Success[0].Data)
+	require.Equal(t, []byte(nil), b.Ok[0].Data)
+	require.Equal(t, []byte(nil), c.Ok[0].Data)
 	require.Equal(t, c, b)
 
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)

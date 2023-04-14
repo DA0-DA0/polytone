@@ -1,6 +1,7 @@
 package simtests
 
 import (
+	"errors"
 	"testing"
 
 	wasmapp "github.com/CosmWasm/wasmd/app"
@@ -230,6 +231,9 @@ func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Acc
 	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Query: &msg,
 	})
+	if callback.InternalError != "" && err != nil {
+		return callback.Query, errors.New(callback.InternalError)
+	}
 	return callback.Query, err
 }
 

@@ -62,18 +62,29 @@ type CallbackMessage struct {
 }
 
 type Callback struct {
-	Execute CallbackDataExecute `json:"execute,omitempty"`
-	Query   CallbackDataQuery   `json:"query,omitempty"`
+	Execute       CallbackDataExecute `json:"execute,omitempty"`
+	Query         CallbackDataQuery   `json:"query,omitempty"`
+	InternalError string              `json:"internal_error,omitempty"`
 }
 
 type CallbackDataQuery struct {
-	Success [][]byte `json:"success,omitempty"`
-	Error   string   `json:"error,omitempty"`
+	Ok    [][]byte `json:"success,omitempty"`
+	Error string   `json:"error,omitempty"`
 }
 
 type CallbackDataExecute struct {
-	Success []SubMsgResponse `json:"success,omitempty"`
-	Error   string           `json:"error,omitempty"`
+	Ok    []SubMsgResponse `json:"ok,omitempty"`
+	Error ErrorResponse    `json:"error,omitempty"`
+}
+
+type ExecutionResponse struct {
+	ExecutedBy string           `json:"executed_by"`
+	Result     []SubMsgResponse `json:"result"`
+}
+
+type ErrorResponse struct {
+	MessageIndex uint64 `json:"message_index,string"`
+	Error        string `json:"error"`
 }
 
 type SubMsgResponse struct {
