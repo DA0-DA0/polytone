@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
@@ -19,4 +19,11 @@ pub enum ContractError {
 
     #[error("contract has no pair, establish a channel with a voice module to create one")]
     NoPair,
+
+    #[error("Note is not controlled, but 'on_behalf_of' is set")]
+    NotControlledButOnBehalfIsSet,
+    #[error("Note is controlled, but this address is not the controller")]
+    NotController,
+    #[error("Note is controlled, but 'on_behalf_of' is not set")]
+    OnBehalfOfNotSet,
 }
