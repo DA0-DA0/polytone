@@ -8,4 +8,4 @@ pub const CONNECTION_REMOTE_PORT: Item<(String, String)> = Item::new("a");
 /// no channel is active.
 pub const CHANNEL: Item<String> = Item::new("b");
 
-pub const CONTROLLER : Item<Addr> = Item::new("c");
+pub const CONTROLLER: Item<Addr> = Item::new("c");
