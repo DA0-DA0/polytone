@@ -2,6 +2,7 @@ package simtests
 
 import (
 	"errors"
+	"math/rand"
 	"testing"
 
 	wasmapp "github.com/CosmWasm/wasmd/app"
@@ -174,11 +175,11 @@ func (s *Suite) SetupDefaultPath(
 ) *ibctesting.Path {
 	// randomize the direction of the handshake. this should be a
 	// no-op for a functional handshake.
-	choice := rand.Intn(2)
+	directionChoice := rand.Intn(2)
 
 	aPort := chainA.QueryPort(chainA.Note)
 	bPort := chainB.QueryPort(chainB.Voice)
-	if choice == 0 {
+	if directionChoice == 0 {
 		// b -> a
 		path, err := s.SetupPath(bPort, aPort, chainB, chainA)
 		require.NoError(s.t, err)
@@ -216,6 +217,10 @@ func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *A
 	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Execute: &msg,
 	})
+	if callback.InternalError != "" && err != nil {
+		return callback.Execute, errors.New(callback.InternalError)
+	}
+
 	return callback.Execute, err
 }
 
@@ -238,6 +243,7 @@ func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Acc
 }
 
 func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *Account, msg NoteExecute) (Callback, error) {
+	startCallbacks := QueryCallbackHistory(account.Chain, account.SuiteChain.Tester)
 	wasmMsg := account.WasmExecute(&account.SuiteChain.Note, msg)
 	if _, err := account.Send(t, wasmMsg); err != nil {
 		return Callback{}, err
@@ -246,6 +252,7 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 		return Callback{}, err
 	}
 	callbacks := QueryCallbackHistory(account.Chain, account.SuiteChain.Tester)
+	require.Equal(t, len(startCallbacks)+1, len(callbacks), "no new callbacks")
 	callback := callbacks[len(callbacks)-1]
 	require.Equal(t, account.Address.String(), callback.Initiator)
 	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)

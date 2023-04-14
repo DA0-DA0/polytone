@@ -57,12 +57,11 @@ func TestFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// callbackExecute := suite.parseCallbackExecute(t, callback)
-	require.Len(t, callbackExecute.Ok, 2)
-	require.Len(t, callbackExecute.Error, 0)
+	require.Len(t, callbackExecute.Ok.Result, 2, "error: "+callbackExecute.Error.Error)
+	require.Equal(t, "", callbackExecute.Error.Error)
 
-	result1 := unmarshalExecute(t, callbackExecute.Ok[0].Data).Data
-	result2 := unmarshalExecute(t, callbackExecute.Ok[1].Data).Data
+	result1 := unmarshalExecute(t, callbackExecute.Ok.Result[0].Data).Data
+	result2 := unmarshalExecute(t, callbackExecute.Ok.Result[1].Data).Data
 
 	require.Equal(t, "hello", string(result1))
 	require.Equal(t, "", string(result2))
@@ -100,13 +99,13 @@ func TestFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Len(t, callbackQuery.Ok, 2)
 
 	require.Equal(t,
 		CallbackDataQuery{
 			Ok: [][]byte{
 				[]byte(`{"amount":{"denom":"stake","amount":"100"}}`), // contracts get made with 100 coins.
-				[]byte(`{"history":[]}`)},
+				[]byte(`{"history":[]}`),
+			},
 		}, callbackQuery)
 }
 
@@ -162,15 +161,17 @@ func TestSameAddressDifferentChains(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	require.Equal(t, "", b.Error)
-	require.Equal(t, "", c.Error)
-	require.Equal(t, []byte(nil), b.Ok[0].Data)
-	require.Equal(t, []byte(nil), c.Ok[0].Data)
-	require.Equal(t, c, b)
+	require.Equal(t, "", b.Error.Error)
+	require.Equal(t, "", c.Error.Error)
+	require.Equal(t, []byte(nil), b.Ok.Result[0].Data)
+	require.Equal(t, []byte(nil), c.Ok.Result[0].Data)
+	require.Equal(t, c.Ok.Result, b.Ok.Result)
 
 	history := QueryHelloHistory(suite.ChainA.Chain, suite.ChainA.Tester)
 	require.Len(t, history, 2)
 	require.NotEqual(t, history[0], history[1])
+	require.Equal(t, b.Ok.ExecutedBy, history[0], "first message executed by chain B remote account")
+	require.Equal(t, c.Ok.ExecutedBy, history[1], "second message executed by chain C remote account")
 }
 
 // Checks that connections between two of the same modules are not
@@ -234,8 +235,11 @@ func TestVoiceOutOfGas(t *testing.T) {
 
 	// SDK codespace 11 is out-of-gas. See cosmos-sdk/types/errors/errors.go
 	require.NoError(t, err, "out-of-gas should not error")
-	require.Equal(t, Callback{
-		Error: "codespace: sdk, code: 11",
+	require.Equal(t, CallbackDataExecute{
+		Error: ErrorResponse{
+			MessageIndex: 0,
+			Error:        "codespace: sdk, code: 11",
+		},
 	}, callback, "out-of-gas should return an ACK")
 }
 
@@ -271,18 +275,13 @@ func TestMultipleMessages(t *testing.T) {
 
 	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 	require.NoError(t, err)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(t, Callback{
-		Success: []string{"aGVsbG8K", ""},
-	}, callback)
+	require.Equal(t, []byte("aGVsbG8K"), callback.Ok.Result[0].Data)
+	require.Equal(t, []byte(""), callback.Ok.Result[1].Data)
 
 	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 	require.NoError(t, err)
-	require.Equal(t, Callback{
-		Success: []string{"aGVsbG8K", ""},
-	}, callback)
+	require.Equal(t, []byte("aGVsbG8K"), callback.Ok.Result[0].Data)
+	require.Equal(t, []byte(""), callback.Ok.Result[1].Data)
 }
 
 // A note may only ever connect to a single voice. This simplifies the

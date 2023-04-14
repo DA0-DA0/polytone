@@ -9,11 +9,10 @@ use cosmwasm_std::{
 
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
 use polytone::{
-    ack::{ack_execute_fail, ack_execute_success, ack_fail},
+    ack::{ack_execute_fail, ack_fail},
     callback::{Callback, ErrorResponse},
     error_reply::ErrorReply,
     handshake::voice,
-    ibc::validate_order_and_version,
 };
 
 use crate::{
