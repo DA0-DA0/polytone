@@ -10,6 +10,9 @@ pub struct InstantiateMsg {
     /// pair, it will never handshake with a different voice module,
     /// even after channel closure.
     pub pair: Option<Pair>,
+    /// This is the controller of the note. if controller is set
+    /// only that address can execute msgs on this note.
+    pub controller: Option<String>,
 }
 
 #[cw_serde]
@@ -18,6 +21,7 @@ pub enum ExecuteMsg {
     /// a callback of Vec<QuerierResult>, or ACK-FAIL if unmarshalling
     /// any of the query requests fails.
     Query {
+        on_behalf_of: Option<String>,
         msgs: Vec<QueryRequest<Empty>>,
         callback: CallbackRequest,
         timeout_seconds: Uint64,
@@ -28,6 +32,7 @@ pub enum ExecuteMsg {
     /// object. Optionaly, returns a callback of `Vec<Callback>` where
     /// index `i` corresponds to the callback for `msgs[i]`.
     Execute {
+        on_behalf_of: Option<String>,
         msgs: Vec<CosmosMsg<Empty>>,
         callback: Option<CallbackRequest>,
         timeout_seconds: Uint64,

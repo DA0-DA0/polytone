@@ -9,7 +9,7 @@ use polytone::{callback, ibc};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, Pair, QueryMsg};
-use crate::state::{CHANNEL, CONNECTION_REMOTE_PORT};
+use crate::state::{CHANNEL, CONNECTION_REMOTE_PORT, CONTROLLER};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-note";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -23,6 +23,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let mut response = Response::default().add_attribute("method", "instantiate");
+
     if let Some(Pair {
         connection_id,
         remote_port,
@@ -33,6 +34,11 @@ pub fn instantiate(
             .add_attribute("pair_port", remote_port.to_string());
         CONNECTION_REMOTE_PORT.save(deps.storage, &(connection_id, remote_port))?;
     };
+
+    if let Some(controller) = msg.controller {
+        response = response.add_attribute("controller", controller.to_string());
+        CONTROLLER.save(deps.storage, &deps.api.addr_validate(&controller)?)?;
+    }
     Ok(response)
 }
 
@@ -43,33 +49,64 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let (msg, callback, timeout_seconds, request_type) = match msg {
+    let (msg, callback, timeout_seconds, request_type, on_behalf_of) = match msg {
         ExecuteMsg::Execute {
             msgs,
             callback,
             timeout_seconds,
+            on_behalf_of,
         } => (
             ibc::Msg::Execute { msgs },
             callback,
             timeout_seconds,
             CallbackRequestType::Execute,
+            on_behalf_of,
         ),
         ExecuteMsg::Query {
             msgs,
             callback,
             timeout_seconds,
+            on_behalf_of,
         } => (
             ibc::Msg::Query { msgs },
             Some(callback),
             timeout_seconds,
             CallbackRequestType::Query,
+            on_behalf_of,
         ),
     };
+
+    // Check if the note is controlled
+    let sender = match CONTROLLER.load(deps.storage) {
+        Ok(controller) => {
+            if controller != info.sender {
+                return Err(ContractError::NotController);
+            }
+
+            // Note is controlled and controller is the sender
+            // now verify we have on_behalf_of set to know who
+            // the real sender is
+            if let Some(sender) = on_behalf_of {
+                deps.api.addr_validate(&sender)
+            } else {
+                // Note is controlled, but on_behalf_of is not set
+                return Err(ContractError::OnBehalfOfNotSet);
+            }
+        }
+        // Note is not controlled, but on_behalf_of is set
+        // probably something was misconfigured
+        Err(_) => {
+            if on_behalf_of.is_some() {
+                return Err(ContractError::NotControlledButOnBehalfIsSet);
+            }
+            Ok(info.sender)
+        }
+    }?;
 
     callback::request_callback(
         deps.storage,
         deps.api,
-        info.sender.clone(),
+        sender.clone(),
         callback,
         request_type,
     )?;
@@ -82,7 +119,7 @@ pub fn execute(
         .add_message(IbcMsg::SendPacket {
             channel_id,
             data: to_binary(&ibc::Packet {
-                sender: info.sender.into_string(),
+                sender: sender.into_string(),
                 msg,
             })
             .expect("msgs are known to be serializable"),
