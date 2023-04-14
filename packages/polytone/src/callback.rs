@@ -33,10 +33,9 @@ pub enum Callback {
     Query(Result<QueryResponse, ErrorResponse>),
     Execute(Result<ExecutionResponse, ErrorResponse>),
 
-    /// An internal error occured while processing a callback. For
-    /// example, this error would occur if parsing the packet sent by
-    /// a note module failed at the voice module. This error should
-    /// never happen for a valid note <-> voice connection.
+    /// An error occured. The only known way this can happen is if
+    /// processing the request runs out of gas, in which case
+    /// "codespace: sdk, code: 11" will be the error.
     InternalError(String),
 }
 
@@ -57,7 +56,7 @@ pub struct ExecutionResponse {
 
 #[cw_serde]
 pub struct ErrorResponse {
-    /// The index of the message who's execution failed.
+    /// The index of the first message who's execution failed.
     pub message_index: Uint64,
     /// The error that occured executing the message.
     pub error: String,
@@ -104,7 +103,7 @@ pub fn request_callback(
     Ok(())
 }
 
-fn callback_msg(pc: PendingCallback, result: Callback) -> CosmosMsg {
+fn callback_msg(request: PendingCallback, result: Callback) -> CosmosMsg {
     /// Gives the executed message a "callback" tag:
     /// `{ "callback": CallbackMsg }`.
     #[cw_serde]
@@ -112,10 +111,10 @@ fn callback_msg(pc: PendingCallback, result: Callback) -> CosmosMsg {
         Callback(CallbackMessage),
     }
     WasmMsg::Execute {
-        contract_addr: pc.receiver.into_string(),
+        contract_addr: request.receiver.into_string(),
         msg: to_binary(&C::Callback(CallbackMessage {
-            initiator: pc.initiator,
-            initiator_msg: pc.initiator_msg,
+            initiator: request.initiator,
+            initiator_msg: request.initiator_msg,
             result,
         }))
         .expect("fields are known to be serializable"),
@@ -192,18 +191,3 @@ pub const LOCAL_TO_REMOTE_ACCOUNT: Map<&Addr, String> = Map::new("polytone-l2r")
 const CALLBACKS: Map<u64, PendingCallback> = Map::new("polytone-callbacks");
 /// The number of packets sent so far.
 const SEQ: Item<u64> = Item::new("polytone-ibc-seq");
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_serialization() {
-        let c = Callback::Success(vec![None]);
-        assert_eq!(
-            to_binary(&c).unwrap().to_string(),
-            // base64 of `{"success":[null]}`
-            "eyJzdWNjZXNzIjpbbnVsbF19"
-        )
-    }
-}

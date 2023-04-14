@@ -231,16 +231,12 @@ func TestVoiceOutOfGas(t *testing.T) {
 		},
 	}
 
-	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
-
-	// SDK codespace 11 is out-of-gas. See cosmos-sdk/types/errors/errors.go
-	require.NoError(t, err, "out-of-gas should not error")
-	require.Equal(t, CallbackDataExecute{
-		Error: ErrorResponse{
-			MessageIndex: 0,
-			Error:        "codespace: sdk, code: 11",
-		},
-	}, callback, "out-of-gas should return an ACK")
+	_, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
+	require.ErrorContains(t,
+		err,
+		"internal error: codespace: sdk, code: 11",
+		"internal error should be returned indicating out of gas",
+	)
 }
 
 // Tests executing a message on the remote chain, checking the
@@ -254,7 +250,7 @@ func TestMultipleMessages(t *testing.T) {
 	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
 
 	accountA := GenAccount(t, &suite.ChainA)
-	dataMsg := `{"hello": { "data": "aGVsbG8K" }}`
+	dataMsg := fmt.Sprintf(`{"hello": { "data": "%s" }}`, testBinary)
 	dataCosmosMsg := w.CosmosMsg{
 		Wasm: &w.WasmMsg{
 			Execute: &w.ExecuteMsg{
@@ -275,13 +271,15 @@ func TestMultipleMessages(t *testing.T) {
 
 	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 	require.NoError(t, err)
-	require.Equal(t, []byte("aGVsbG8K"), callback.Ok.Result[0].Data)
-	require.Equal(t, []byte(""), callback.Ok.Result[1].Data)
+	response := unmarshalExecute(t, callback.Ok.Result[0].Data).Data
+	require.Equal(t, "hello", string(response))
+	require.Equal(t, []byte(nil), callback.Ok.Result[1].Data)
 
 	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
 	require.NoError(t, err)
-	require.Equal(t, []byte("aGVsbG8K"), callback.Ok.Result[0].Data)
-	require.Equal(t, []byte(""), callback.Ok.Result[1].Data)
+	response = unmarshalExecute(t, callback.Ok.Result[0].Data).Data
+	require.Equal(t, "hello", string(response))
+	require.Equal(t, []byte(nil), callback.Ok.Result[1].Data)
 }
 
 // A note may only ever connect to a single voice. This simplifies the

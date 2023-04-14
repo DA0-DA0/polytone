@@ -27,10 +27,11 @@ pub(crate) const REPLY_FORWARD_DATA: u64 = 1;
 /// The amount of gas that needs to be reserved for the reply method
 /// to return an ACK for a submessage that runs out of gas.
 ///
-/// This value was found via a manual binary search using the
-/// `TestVoiceOutOfGas` test in `functionality_test.go`. The true
-/// value is somewhere between 100_050 and 100_000.
-const ACK_GAS_NEEDED: u64 = 100_050;
+/// Use `TestVoiceOutOfGas` in `tests/simtests/functionality_test.go`
+/// to tune this. Note that it is best to give this a lot of headroom
+/// as gas usage is non-deterministic in the SDK and a limit tuned
+/// within 50 gas is liable to fail non-dererministicly.
+const ACK_GAS_NEEDED: u64 = 101_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(

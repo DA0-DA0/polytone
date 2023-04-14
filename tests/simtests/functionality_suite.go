@@ -217,8 +217,8 @@ func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *A
 	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Execute: &msg,
 	})
-	if callback.InternalError != "" && err != nil {
-		return callback.Execute, errors.New(callback.InternalError)
+	if callback.InternalError != "" && err == nil {
+		return callback.Execute, errors.New("internal error: " + callback.InternalError)
 	}
 
 	return callback.Execute, err
@@ -236,7 +236,7 @@ func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Acc
 	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Query: &msg,
 	})
-	if callback.InternalError != "" && err != nil {
+	if callback.InternalError != "" && err == nil {
 		return callback.Query, errors.New(callback.InternalError)
 	}
 	return callback.Query, err
