@@ -11,3 +11,6 @@ pub const CHANNEL: Item<String> = Item::new("b");
 /// The controller of this note. See documentation for the
 /// `controller` field on `InstantiateMsg` for more information.
 pub const CONTROLLER: Item<Addr> = Item::new("c");
+
+/// Max gas usable in a single block.
+pub(crate) const BLOCK_MAX_GAS: Item<u64> = Item::new("bmg");

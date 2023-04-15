@@ -9,7 +9,8 @@ use polytone::{callback, ibc};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, Pair, QueryMsg};
-use crate::state::{CHANNEL, CONNECTION_REMOTE_PORT, CONTROLLER};
+
+use crate::state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT, CONTROLLER};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-note";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -22,6 +23,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
+
     let mut response = Response::default().add_attribute("method", "instantiate");
 
     if let Some(Pair {
@@ -133,5 +137,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             &callback::LOCAL_TO_REMOTE_ACCOUNT
                 .may_load(deps.storage, &deps.api.addr_validate(&local_address)?)?,
         ),
+        QueryMsg::BlockMaxGas => to_binary(&BLOCK_MAX_GAS.load(deps.storage)?),
     }
 }

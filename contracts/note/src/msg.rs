@@ -32,6 +32,8 @@ pub struct InstantiateMsg {
     ///
     /// <https://github.com/DA0-DA0/polytone/wiki/How-Polytone-Supports-Outposts>
     pub controller: Option<String>,
+
+    pub block_max_gas: Uint64,
 }
 
 #[cw_serde]
@@ -79,6 +81,9 @@ pub enum QueryMsg {
     /// `local_address`.
     #[returns(Option<String>)]
     RemoteAddress { local_address: String },
+    /// Currently set gas limit
+    #[returns(Uint64)]
+    BlockMaxGas,
 }
 
 /// This contract's voice. There is one voice per note, and many notes
