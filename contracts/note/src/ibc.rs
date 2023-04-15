@@ -9,8 +9,13 @@ use polytone::{callback, handshake::note};
 
 use crate::{
     error::ContractError,
-    state::{CHANNEL, CONNECTION_REMOTE_PORT},
+    state::{CHANNEL, CONNECTION_REMOTE_PORT, BLOCK_MAX_GAS},
 };
+
+/// The amount of gas that needs to be reserved to avoid
+/// failing the whole transaction if a callback receiver errors.
+// TODO: figure out amount needed via TestNoteOutOfGas 
+const ERR_GAS_NEEDED: u64 = 100_500;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(
@@ -89,7 +94,16 @@ pub fn ibc_packet_ack(
     _env: Env,
     ack: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    let callback = callback::on_ack(deps.storage, &ack);
+    let callback = match callback::on_ack(deps.storage, &ack) {
+        Some(msg) => Some(msg.with_gas_limit(
+            BLOCK_MAX_GAS
+            .load(deps.storage)
+            .expect("set during instantiation")
+            - ERR_GAS_NEEDED,
+        )),
+        None => None,
+    };
+
     Ok(IbcBasicResponse::default()
         .add_attribute("method", "ibc_packet_ack")
         .add_attribute("sequence_number", ack.original_packet.sequence.to_string())
@@ -106,7 +120,13 @@ pub fn ibc_packet_timeout(
     Ok(IbcBasicResponse::default()
         .add_attribute("method", "ibc_packet_timeout")
         .add_attribute("sequence_number", msg.packet.sequence.to_string())
-        .add_submessages(callback.map(|c| SubMsg::reply_on_error(c, msg.packet.sequence))))
+        .add_submessages(callback.map(|c| 
+            SubMsg::reply_on_error(c, msg.packet.sequence)
+                .with_gas_limit(BLOCK_MAX_GAS
+                    .load(deps.storage)
+                    .expect("set during instantiation")
+                    - ERR_GAS_NEEDED,))
+        ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

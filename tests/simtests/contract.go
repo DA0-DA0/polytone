@@ -12,7 +12,8 @@ import (
 )
 
 type NoteInstantiate struct {
-	Controller string `json:"controller,omitempty"`
+	Controller  string `json:"controller,omitempty"`
+	BlockMaxGas uint64 `json:"block_max_gas,string"`
 }
 
 type VoiceInstantiate struct {

@@ -215,6 +215,11 @@ func TestVoiceOutOfGas(t *testing.T) {
 	)
 }
 
+func TestNoteOutOfGas(t *testing.T) {
+	suite := NewSuite(t)
+	// TODO
+}
+
 // Tests executing a message on the remote chain, checking the
 // callback, and then executing another message.
 //

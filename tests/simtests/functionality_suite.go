@@ -48,7 +48,9 @@ func SetupChain(t *testing.T, c *ibctesting.Coordinator, index int) Chain {
 	blockMaxGas := 2 * wasmapp.DefaultGas
 	require.NotZero(t, blockMaxGas, "should be set")
 
-	note := Instantiate(t, chain, 1, NoteInstantiate{})
+	note := Instantiate(t, chain, 1, NoteInstantiate{
+		BlockMaxGas: uint64(blockMaxGas),
+	})
 	voice := Instantiate(t, chain, 2, VoiceInstantiate{
 		ProxyCodeId: 3,
 		BlockMaxGas: uint64(blockMaxGas),
