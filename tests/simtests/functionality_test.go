@@ -406,6 +406,66 @@ func TestQueryErrors(t *testing.T) {
 	)
 }
 
+func TestInstantiateExecute(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	msg, err := json.Marshal(TesterInstantiate{})
+	require.NoError(t, err)
+	initCosmosMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Instantiate: &w.InstantiateMsg{
+				CodeID: 4,
+				Msg:    msg,
+				Funds:  []w.Coin{},
+				Label:  "test",
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripExecute(t, path, &accountA, initCosmosMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Empty(t, callback.Err, "callback should not error")
+	response := unmarshalInstantiate(t, callback.Ok.Result[0].Data)
+
+	// address should be: cosmos1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqa0dr5q
+	// But because it can change in the future, we just check its not empty
+	require.NotEmpty(t, response.Address, "address should not be empty")
+}
+
+func TestControlledNote(t *testing.T) {
+	suite := NewSuite(t)
+
+	accountController := GenAccount(t, &suite.ChainA)
+	suite.ChainA.Note = Instantiate(t, suite.ChainA.Chain, 1, NoteInstantiate{
+		Controller: accountController.Address.String(),
+	})
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	accountA := GenAccount(t, &suite.ChainA)
+
+	hello := HelloMessage(suite.ChainB.Tester, testBinary)
+
+	callback, err := suite.RoundtripExecuteControlled(t, path, &accountController, accountA.Address.String(), hello)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Empty(t, callback.Err, "callback should not error")
+	require.NotEmpty(t, callback.Ok, "data should not be empty")
+
+	// Should err as accountA is not the controller
+	_, err = suite.RoundtripExecuteControlled(t, path, &accountA, accountController.Address.String(), hello)
+	require.Contains(t, err.Error(), "Note is controlled, but this address is not the controller")
+
+	// Should err as we don't set on_behalf_of (empty string)
+	_, err = suite.RoundtripExecuteControlled(t, path, &accountController, "", hello)
+	require.Contains(t, err.Error(), "Note is controlled, but 'on_behalf_of' is not set")
+}
+
 // test multi-message loop between chains
 
 // test execution fail returns error
