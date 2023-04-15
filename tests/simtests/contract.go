@@ -78,8 +78,8 @@ type Callback struct {
 }
 
 type CallbackDataQuery struct {
-	Ok  [][]byte `json:"ok,omitempty"`
-	Err string   `json:"error,omitempty"`
+	Ok  [][]byte      `json:"ok,omitempty"`
+	Err ErrorResponse `json:"err,omitempty"`
 }
 
 type CallbackDataExecute struct {

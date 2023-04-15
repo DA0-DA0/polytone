@@ -70,7 +70,6 @@ func TestFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(string(queryBytes))
 
 	historyQuery := w.QueryRequest{
 		Wasm: &w.WasmQuery{
@@ -351,6 +350,59 @@ func TestErrorReturnsErrorAndRollsBack(t *testing.T) {
 		},
 		callback,
 		"proxy errored during execution",
+	)
+
+	history := QueryHelloHistory(suite.ChainB.Chain, suite.ChainB.Tester)
+	require.Empty(t, history, "history message should have been rolled back on bank msg failure")
+}
+
+// Test that query failures correctly return their index.
+func TestQueryErrors(t *testing.T) {
+	suite := NewSuite(t)
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+	account := GenAccount(t, &suite.ChainA)
+
+	testerQuery := TesterQuery{
+		History: &Empty{},
+	}
+	queryBytes, err := json.Marshal(testerQuery)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	goodQuery := w.QueryRequest{
+		Wasm: &w.WasmQuery{
+			Smart: &w.SmartQuery{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          queryBytes,
+			},
+		},
+	}
+
+	// tester query against voice module will error.
+	badQuery := w.QueryRequest{
+		Wasm: &w.WasmQuery{
+			Smart: &w.SmartQuery{
+				ContractAddr: suite.ChainB.Voice.String(),
+				Msg:          queryBytes,
+			},
+		},
+	}
+
+	callback, err := suite.RoundtripQuery(t, path, &account, goodQuery, badQuery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// codespace 9 = "query wasm contract failed"
+	require.Equal(t,
+		CallbackDataQuery{
+			Err: ErrorResponse{
+				MessageIndex: 1,
+				Error:        "codespace: wasm, code: 9",
+			},
+		},
+		callback,
+		"second query should fail",
 	)
 }
 
