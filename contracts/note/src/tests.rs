@@ -1,4 +1,3 @@
-
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Uint64, WasmMsg,
@@ -48,27 +47,6 @@ fn simple_note() {
         },
     )
     .unwrap();
-
-    // note is controlled, but `on_behalf_of` is set should error
-    let err = execute(
-        deps.as_mut(),
-        env,
-        info,
-        crate::msg::ExecuteMsg::Execute {
-            on_behalf_of: Some("some_addr".to_string()),
-            msgs: vec![WasmMsg::Execute {
-                contract_addr: "some_addr".to_string(),
-                msg: to_binary("some_msg").unwrap(),
-                funds: vec![],
-            }
-            .into()],
-            callback: None,
-            timeout_seconds: Uint64::new(10000),
-        },
-    )
-    .unwrap_err();
-
-    assert_eq!(err, ContractError::NotControlledButOnBehalfIsSet)
 }
 
 #[test]

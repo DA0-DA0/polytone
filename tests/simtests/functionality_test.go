@@ -332,7 +332,7 @@ func TestErrorReturnsErrorAndRollsBack(t *testing.T) {
 			Send: &w.SendMsg{
 				ToAddress: suite.ChainB.Voice.String(),
 				Amount: []w.Coin{
-					w.Coin{
+					{
 						Denom:  suite.ChainB.Chain.App.StakingKeeper.BondDenom(suite.ChainB.Chain.GetContext()),
 						Amount: "100",
 					},
