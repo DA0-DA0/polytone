@@ -32,6 +32,7 @@ type NoteQuery struct {
 }
 
 type NoteExecuteMsg struct {
+	OnBehalfOf     string           `json:"on_behalf_of,omitempty"`
 	Msgs           []any            `json:"msgs"`
 	TimeoutSeconds uint64           `json:"timeout_seconds,string"`
 	Callback       *CallbackRequest `json:"callback,omitempty"`

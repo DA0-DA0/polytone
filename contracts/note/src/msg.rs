@@ -21,7 +21,6 @@ pub enum ExecuteMsg {
     /// a callback of Vec<QuerierResult>, or ACK-FAIL if unmarshalling
     /// any of the query requests fails.
     Query {
-        on_behalf_of: Option<String>,
         msgs: Vec<QueryRequest<Empty>>,
         callback: CallbackRequest,
         timeout_seconds: Uint64,
