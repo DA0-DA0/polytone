@@ -4,6 +4,7 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
+use polytone::callback::CallbackRequestType;
 use polytone::{callback, ibc};
 
 use crate::error::ContractError;
@@ -42,20 +43,36 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let (msg, callback, timeout_seconds) = match msg {
+    let (msg, callback, timeout_seconds, request_type) = match msg {
         ExecuteMsg::Execute {
             msgs,
             callback,
             timeout_seconds,
-        } => (ibc::Msg::Execute { msgs }, callback, timeout_seconds),
+        } => (
+            ibc::Msg::Execute { msgs },
+            callback,
+            timeout_seconds,
+            CallbackRequestType::Execute,
+        ),
         ExecuteMsg::Query {
             msgs,
             callback,
             timeout_seconds,
-        } => (ibc::Msg::Query { msgs }, Some(callback), timeout_seconds),
+        } => (
+            ibc::Msg::Query { msgs },
+            Some(callback),
+            timeout_seconds,
+            CallbackRequestType::Query,
+        ),
     };
 
-    callback::request_callback(deps.storage, deps.api, info.sender.clone(), callback)?;
+    callback::request_callback(
+        deps.storage,
+        deps.api,
+        info.sender.clone(),
+        callback,
+        request_type,
+    )?;
 
     let channel_id = CHANNEL
         .may_load(deps.storage)?
@@ -83,5 +100,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 remote_port,
             },
         )),
+        QueryMsg::RemoteAddress { local_address } => to_binary(
+            &callback::LOCAL_TO_REMOTE_ACCOUNT
+                .may_load(deps.storage, &deps.api.addr_validate(&local_address)?)?,
+        ),
     }
 }

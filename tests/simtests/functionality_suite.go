@@ -1,11 +1,14 @@
 package simtests
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
 	"testing"
 
 	wasmapp "github.com/CosmWasm/wasmd/app"
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
+	w "github.com/CosmWasm/wasmvm/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	channeltypes "github.com/cosmos/ibc-go/v4/modules/core/04-channel/types"
@@ -174,11 +177,11 @@ func (s *Suite) SetupDefaultPath(
 ) *ibctesting.Path {
 	// randomize the direction of the handshake. this should be a
 	// no-op for a functional handshake.
-	choice := rand.Intn(2)
+	directionChoice := rand.Intn(2)
 
 	aPort := chainA.QueryPort(chainA.Note)
 	bPort := chainB.QueryPort(chainB.Voice)
-	if choice == 0 {
+	if directionChoice == 0 {
 		// b -> a
 		path, err := s.SetupPath(bPort, aPort, chainB, chainA)
 		require.NoError(s.t, err)
@@ -204,7 +207,10 @@ func (c *Chain) MintBondedDenom(t *testing.T, to sdk.AccAddress) {
 	require.NoError(t, err)
 }
 
-func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (Callback, error) {
+func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs ...w.CosmosMsg) (CallbackDataExecute, error) {
+	if msgs == nil {
+		msgs = []w.CosmosMsg{}
+	}
 	msg := NoteExecuteMsg{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
@@ -213,13 +219,21 @@ func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *A
 			Msg:      "aGVsbG8K",
 		},
 	}
-	return s.RoundtripMessage(t, path, account, NoteExecute{
+	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Execute: &msg,
 	})
+	if callback.FatalError != "" && err == nil {
+		return callback.Execute, errors.New("internal error: " + callback.FatalError)
+	}
+
+	return callback.Execute, err
 }
 
-func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (Callback, error) {
-	msg := NoteQuery{
+func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Account, msgs ...w.QueryRequest) (CallbackDataQuery, error) {
+	if msgs == nil {
+		msgs = []w.QueryRequest{}
+	}
+	msg := NoteExecuteQuery{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
 		Callback: CallbackRequest{
@@ -227,12 +241,17 @@ func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Acc
 			Msg:      "aGVsbG8K",
 		},
 	}
-	return s.RoundtripMessage(t, path, account, NoteExecute{
+	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Query: &msg,
 	})
+	if callback.FatalError != "" && err == nil {
+		return callback.Query, errors.New(callback.FatalError)
+	}
+	return callback.Query, err
 }
 
 func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *Account, msg NoteExecute) (Callback, error) {
+	startCallbacks := QueryCallbackHistory(account.Chain, account.SuiteChain.Tester)
 	wasmMsg := account.WasmExecute(&account.SuiteChain.Note, msg)
 	if _, err := account.Send(t, wasmMsg); err != nil {
 		return Callback{}, err
@@ -241,8 +260,25 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 		return Callback{}, err
 	}
 	callbacks := QueryCallbackHistory(account.Chain, account.SuiteChain.Tester)
+	require.Equal(t, len(startCallbacks)+1, len(callbacks), "no new callbacks")
 	callback := callbacks[len(callbacks)-1]
 	require.Equal(t, account.Address.String(), callback.Initiator)
 	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)
+
 	return callback.Result, nil
+}
+
+func HelloMessage(to sdk.AccAddress, data string) w.CosmosMsg {
+	return w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: to.String(),
+				Msg: []byte(
+					fmt.Sprintf(`{"hello": { "data": "%s" }}`,
+						data,
+					)),
+				Funds: []w.Coin{},
+			},
+		},
+	}
 }

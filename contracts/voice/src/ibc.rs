@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg,
+    from_binary, to_binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, Reply, Response, SubMsg,
     SubMsgResult, WasmMsg,
@@ -9,7 +9,8 @@ use cosmwasm_std::{
 
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
 use polytone::{
-    ack::{ack_fail, ack_success},
+    ack::{ack_execute_fail, ack_fail},
+    callback::Callback,
     handshake::voice,
 };
 
@@ -25,10 +26,11 @@ pub(crate) const REPLY_FORWARD_DATA: u64 = 1;
 /// The amount of gas that needs to be reserved for the reply method
 /// to return an ACK for a submessage that runs out of gas.
 ///
-/// This value was found via a manual binary search using the
-/// `TestVoiceOutOfGas` test in `functionality_test.go`. The true
-/// value is somewhere between 100_050 and 100_000.
-const ACK_GAS_NEEDED: u64 = 100_050;
+/// Use `TestVoiceOutOfGas` in `tests/simtests/functionality_test.go`
+/// to tune this. Note that it is best to give this a lot of headroom
+/// as gas usage is non-deterministic in the SDK and a limit tuned
+/// within 50 gas is liable to fail non-dererministicly.
+const ACK_GAS_NEEDED: u64 = 101_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(
@@ -111,25 +113,37 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 .add_attribute("ack_error", &e)
                 .set_data(ack_fail(e)),
             SubMsgResult::Ok(_) => {
-                let data = parse_reply_execute_data(msg)
+                let data = parse_reply_execute_data(msg.clone())
                     .expect("execution succeded")
                     .data
-                    .expect("proxy should set data");
-                match from_binary::<Vec<Option<Binary>>>(&data) {
-                    Ok(d) => Response::default().set_data(ack_success(d)),
+                    .expect("reply_forward_data sets data");
+                match from_binary::<Callback>(&data) {
+                    Ok(_) => Response::default().set_data(data),
                     Err(e) => Response::default()
                         .set_data(ack_fail(format!("unmarshaling callback data: ({e})"))),
                 }
             }
         }),
-        REPLY_FORWARD_DATA => {
-            let MsgExecuteContractResponse { data } = parse_reply_execute_data(msg)?;
-            let response = Response::default().add_attribute("method", "reply_forward_data");
-            Ok(match data {
-                Some(data) => response.set_data(data),
-                None => response,
-            })
-        }
+        REPLY_FORWARD_DATA => match msg.result {
+            // Executing the requested messages succeded. Because more
+            // than one message can be dispatched (instantiate proxy &
+            // execute proxy), CosmWasm will not automatically
+            // percolate the data up so we do so ourselves. Because we
+            // don't reply on instantiation, the data here is the
+            // result of executing messages on the proxy.
+            SubMsgResult::Ok(_) => {
+                let MsgExecuteContractResponse { data } = parse_reply_execute_data(msg)?;
+                let response =
+                    Response::default().add_attribute("method", "reply_forward_data_success");
+                Ok(match data {
+                    Some(data) => response.set_data(data),
+                    None => unreachable!("proxy will always set data"),
+                })
+            }
+            SubMsgResult::Err(err) => Ok(Response::default()
+                .add_attribute("method", "reply_forward_data_error")
+                .set_data(ack_execute_fail(err))),
+        },
         _ => unreachable!("unknown reply ID"),
     }
 }

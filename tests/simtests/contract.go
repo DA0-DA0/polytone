@@ -2,10 +2,13 @@ package simtests
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
+	w "github.com/CosmWasm/wasmvm/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	_ "github.com/cosmos/gogoproto/gogoproto"
 )
 
 type NoteInstantiate struct {
@@ -20,18 +23,26 @@ type TesterInstantiate struct {
 }
 
 type NoteExecute struct {
-	Query   *NoteQuery      `json:"query,omitempty"`
-	Execute *NoteExecuteMsg `json:"execute,omitempty"`
+	Query   *NoteExecuteQuery `json:"query,omitempty"`
+	Execute *NoteExecuteMsg   `json:"execute,omitempty"`
 }
 
-type NoteQuery struct {
-	Msgs           []any           `json:"msgs"`
-	TimeoutSeconds uint64          `json:"timeout_seconds,string"`
-	Callback       CallbackRequest `json:"callback"`
+var (
+	NoteQueryActiveChannel = `"active_channel"`
+	NoteQueryPair          = `"pair"`
+	NoteQueryRemoteAddress = func(local_address string) string {
+		return fmt.Sprintf(`{"remote_address":{"local_address":"%s"}}`, local_address)
+	}
+)
+
+type NoteExecuteQuery struct {
+	Msgs           []w.QueryRequest `json:"msgs"`
+	TimeoutSeconds uint64           `json:"timeout_seconds,string"`
+	Callback       CallbackRequest  `json:"callback"`
 }
 
 type NoteExecuteMsg struct {
-	Msgs           []any            `json:"msgs"`
+	Msgs           []w.CosmosMsg    `json:"msgs"`
 	TimeoutSeconds uint64           `json:"timeout_seconds,string"`
 	Callback       *CallbackRequest `json:"callback,omitempty"`
 }
@@ -61,8 +72,46 @@ type CallbackMessage struct {
 }
 
 type Callback struct {
-	Success []string `json:"success,omitempty"`
-	Error   string   `json:"error,omitempty"`
+	Execute    CallbackDataExecute `json:"execute,omitempty"`
+	Query      CallbackDataQuery   `json:"query,omitempty"`
+	FatalError string              `json:"fatal_error,omitempty"`
+}
+
+type CallbackDataQuery struct {
+	Ok  [][]byte      `json:"ok,omitempty"`
+	Err ErrorResponse `json:"err,omitempty"`
+}
+
+type CallbackDataExecute struct {
+	Ok  ExecutionResponse `json:"ok,omitempty"`
+	Err string            `json:"err,omitempty"`
+}
+
+type ExecutionResponse struct {
+	ExecutedBy string           `json:"executed_by"`
+	Result     []SubMsgResponse `json:"result"`
+}
+
+type ErrorResponse struct {
+	MessageIndex uint64 `json:"message_index,string"`
+	Error        string `json:"error"`
+}
+
+type SubMsgResponse struct {
+	Events []Event `json:"events"`
+	Data   []byte  `json:"data,omitempty"`
+}
+
+type Events []Event
+type Event struct {
+	Type       string          `json:"type"`
+	Attributes EventAttributes `json:"attributes"`
+}
+
+type EventAttributes []EventAttribute
+type EventAttribute struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type Empty struct{}
@@ -118,4 +167,20 @@ func QueryHelloHistory(chain *ibctesting.TestChain, tester sdk.AccAddress) []str
 	var response HelloHistoryResponse
 	json.Unmarshal(res, &response)
 	return response.History
+}
+
+func QueryRemoteAccount(
+	chain *ibctesting.TestChain,
+	note sdk.AccAddress,
+	local_address sdk.AccAddress,
+) string {
+	query, err := chain.App.WasmKeeper.QuerySmart(
+		chain.GetContext(),
+		note,
+		[]byte(NoteQueryRemoteAddress(local_address.String())),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return string(query)
 }
