@@ -66,13 +66,12 @@ pub fn execute(
             msgs,
             callback,
             timeout_seconds,
-            on_behalf_of,
         } => (
             ibc::Msg::Query { msgs },
             Some(callback),
             timeout_seconds,
             CallbackRequestType::Query,
-            on_behalf_of,
+            Some(info.sender.to_string()),
         ),
     };
 
@@ -93,14 +92,7 @@ pub fn execute(
                 return Err(ContractError::OnBehalfOfNotSet);
             }
         }
-        // Note is not controlled, but on_behalf_of is set
-        // probably something was misconfigured
-        Err(_) => {
-            if on_behalf_of.is_some() {
-                return Err(ContractError::NotControlledButOnBehalfIsSet);
-            }
-            Ok(info.sender)
-        }
+        Err(_) => Ok(info.sender),
     }?;
 
     callback::request_callback(
