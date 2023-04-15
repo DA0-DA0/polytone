@@ -6,7 +6,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use polytone::ack::ack_execute_success;
-use polytone::error_reply::ErrorReply;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -73,7 +72,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
     let mut collector = COLLECTOR.load(deps.storage)?;
 
     match msg.result {
-        SubMsgResult::Err(error) => Err(ContractError::Reply(ErrorReply::new(msg.id, error))),
+        SubMsgResult::Err(error) => Err(ContractError::MsgError {
+            index: collector.len() as u64,
+            error,
+        }),
         SubMsgResult::Ok(res) => {
             collector[msg.id as usize] = Some(res);
 

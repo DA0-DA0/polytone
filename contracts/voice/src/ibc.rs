@@ -10,8 +10,7 @@ use cosmwasm_std::{
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
 use polytone::{
     ack::{ack_execute_fail, ack_fail},
-    callback::{Callback, ErrorResponse},
-    error_reply::ErrorReply,
+    callback::Callback,
     handshake::voice,
 };
 
@@ -141,28 +140,9 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                     None => unreachable!("proxy will always set data"),
                 })
             }
-            // There was an error executing the messages. There are
-            // two ways this could have happened:
-            //
-            // 1. An internal error occured.
-            // 2. Executing submessages failed.
-            //
-            // In the second case, the proxy sets the error to a
-            // base64 encoded `ErrorResponse`. In the first, it will
-            // be an unspecified string.
-            //
-            // For the first case we want to return an ACK-fail with
-            // an internal error. To do this, we try to parse an
-            // `ErrorResponse` and if that fails error which will
-            // percolate up to `REPLY_ACK` where the ACK-FAIL will be
-            // written. If parsing succedes the error response is put
-            // into an ACK-SUCCESS.
-            SubMsgResult::Err(err) => {
-                let response: ErrorResponse = ErrorReply::from_error(&err)?;
-                Ok(Response::default()
-                    .add_attribute("method", "reply_forward_data_error")
-                    .set_data(ack_execute_fail(response.message_index, response.error)))
-            }
+            SubMsgResult::Err(err) => Ok(Response::default()
+                .add_attribute("method", "reply_forward_data_error")
+                .set_data(ack_execute_fail(err))),
         },
         _ => unreachable!("unknown reply ID"),
     }

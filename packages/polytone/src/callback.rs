@@ -30,20 +30,33 @@ pub struct CallbackMessage {
 
 #[cw_serde]
 pub enum Callback {
-    Query(Result<QueryResponse, ErrorResponse>),
-    Execute(Result<ExecutionResponse, ErrorResponse>),
+    /// Result of executing the requested query, or an error.
+    ///
+    /// result[i] corresponds to the i'th query and contains the
+    /// base64 encoded query response.
+    Query(Result<Vec<Binary>, ErrorResponse>),
 
-    /// An error occured. The only known way this can happen is if
-    /// processing the request runs out of gas, in which case
-    /// "codespace: sdk, code: 11" will be the error.
-    InternalError(String),
+    /// Result of executing the requested messages, or an error.
+    ///
+    /// 14/04/23: if a submessage errors the reply handler can see
+    /// `codespace: wasm, code: 5`, but not the actual error. as a
+    /// result, we can't return good errors for Execution and this
+    /// error string will only tell you the error's codespace. for
+    /// example, an out-of-gas error is code 11 and looks like
+    /// `codespace: sdk, code: 11`.
+    Execute(Result<ExecutionResponse, String>),
+
+    /// An error occured that could not be recovered from. The only
+    /// known way that this can occur is message handling running out
+    /// of gas, in which case the error will be `codespace: sdk, code:
+    /// 11`.
+    ///
+    /// This error is not named becuase it could also occur due to a
+    /// panic or unhandled error during message processing. We don't
+    /// expect this to happen and have carefully written the code to
+    /// avoid it.
+    FatalError(String),
 }
-
-/// The result of executing a query. For successful execution, index
-/// `i` corresponds to the raw query result of performing query
-/// `i`. Specifically, it is the result of running
-/// `deps.querier.raw_query` with message `i`.
-pub type QueryResponse = Vec<Binary>;
 
 #[cw_serde]
 pub struct ExecutionResponse {
@@ -156,13 +169,13 @@ pub fn on_timeout(
 	return None
     };
     CALLBACKS.remove(storage, packet.sequence);
-    let response = ErrorResponse {
-        message_index: Uint64::zero(),
-        error: "timeout".to_string(),
-    };
+    let timeout = "timeout".to_string();
     let result = match request.request_type {
-        CallbackRequestType::Execute => Callback::Execute(Err(response)),
-        CallbackRequestType::Query => Callback::Query(Err(response)),
+        CallbackRequestType::Execute => Callback::Execute(Err(timeout)),
+        CallbackRequestType::Query => Callback::Query(Err(ErrorResponse {
+            message_index: Uint64::zero(),
+            error: timeout,
+        })),
     };
     Some(callback_msg(request, result))
 }

@@ -1,6 +1,5 @@
 use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
-use polytone::{callback, error_reply::ErrorReply};
 use thiserror::Error;
 
 // Take care when adding variants to this type that an attacker can't
@@ -16,9 +15,9 @@ pub enum ContractError {
     #[error(transparent)]
     Parse(#[from] ParseReplyError),
 
-    #[error(transparent)]
-    Reply(ErrorReply<callback::ErrorResponse>),
-
     #[error("caller must be the contract instantiator")]
     NotInstantiator,
+
+    #[error("executing message {index}: {error}")]
+    MsgError { index: u64, error: String },
 }

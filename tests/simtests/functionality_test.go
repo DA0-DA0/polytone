@@ -2,18 +2,15 @@ package simtests
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	w "github.com/CosmWasm/wasmvm/types"
 	"github.com/stretchr/testify/require"
 )
 
-type Tester string
-
 const (
-	testBinary Tester = "aGVsbG8=" // "hello" in base64
-	testText   Tester = "hello"
+	testBinary string = "aGVsbG8=" // "hello" in base64
+	testText   string = "hello"
 )
 
 // I can:
@@ -34,16 +31,7 @@ func TestFunctionality(t *testing.T) {
 	// chain.
 
 	accountA := GenAccount(t, &suite.ChainA)
-	dataMsg := fmt.Sprintf(`{"hello": { "data": "%s" }}`, testBinary)
-	dataCosmosMsg := w.CosmosMsg{
-		Wasm: &w.WasmMsg{
-			Execute: &w.ExecuteMsg{
-				ContractAddr: suite.ChainB.Tester.String(),
-				Msg:          []byte(dataMsg),
-				Funds:        []w.Coin{},
-			},
-		},
-	}
+	dataCosmosMsg := HelloMessage(suite.ChainB.Tester, string(testBinary))
 
 	noDataCosmosMsg := w.CosmosMsg{
 		Distribution: &w.DistributionMsg{
@@ -53,17 +41,17 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	callbackExecute, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	callbackExecute, err := suite.RoundtripExecute(t, path, &accountA, dataCosmosMsg, noDataCosmosMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Len(t, callbackExecute.Ok.Result, 2, "error: "+callbackExecute.Error.Error)
-	require.Equal(t, "", callbackExecute.Error.Error)
+	require.Len(t, callbackExecute.Ok.Result, 2, "error: "+callbackExecute.Err)
+	require.Equal(t, "", callbackExecute.Err)
 
 	result1 := unmarshalExecute(t, callbackExecute.Ok.Result[0].Data).Data
 	result2 := unmarshalExecute(t, callbackExecute.Ok.Result[1].Data).Data
 
-	require.Equal(t, "hello", string(result1))
+	require.Equal(t, testText, string(result1))
 	require.Equal(t, "", string(result2))
 
 	balanceQuery := w.QueryRequest{
@@ -75,8 +63,6 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	history := QueryCallbackHistory(suite.ChainB.Chain, suite.ChainB.Tester)
-	t.Log(history)
 	testerQuery := TesterQuery{
 		History: &Empty{},
 	}
@@ -95,7 +81,7 @@ func TestFunctionality(t *testing.T) {
 		},
 	}
 
-	callbackQuery, err := suite.RoundtripQuery(t, path, &accountA, []any{balanceQuery, historyQuery})
+	callbackQuery, err := suite.RoundtripQuery(t, path, &accountA, balanceQuery, historyQuery)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,28 +127,19 @@ func TestSameAddressDifferentChains(t *testing.T) {
 
 	require.Equal(t, friend.Address.String(), duplicate.Address.String())
 
-	hello := `{"hello": { "data": "" }}`
-	helloMsg := w.CosmosMsg{
-		Wasm: &w.WasmMsg{
-			Execute: &w.ExecuteMsg{
-				ContractAddr: suite.ChainA.Tester.String(),
-				Msg:          []byte(hello),
-				Funds:        []w.Coin{},
-			},
-		},
-	}
+	helloMsg := HelloMessage(suite.ChainA.Tester, "")
 
-	b, err := suite.RoundtripExecute(t, pathBA, &friend, []any{helloMsg})
+	b, err := suite.RoundtripExecute(t, pathBA, &friend, helloMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := suite.RoundtripExecute(t, pathCA, &duplicate, []any{helloMsg})
+	c, err := suite.RoundtripExecute(t, pathCA, &duplicate, helloMsg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	require.Equal(t, "", b.Error.Error)
-	require.Equal(t, "", c.Error.Error)
+	require.Equal(t, "", b.Err)
+	require.Equal(t, "", c.Err)
 	require.Equal(t, []byte(nil), b.Ok.Result[0].Data)
 	require.Equal(t, []byte(nil), c.Ok.Result[0].Data)
 	require.Equal(t, c.Ok.Result, b.Ok.Result)
@@ -231,7 +208,7 @@ func TestVoiceOutOfGas(t *testing.T) {
 		},
 	}
 
-	_, err := suite.RoundtripExecute(t, path, &accountA, []any{gasCosmosgMsg})
+	_, err := suite.RoundtripExecute(t, path, &accountA, gasCosmosgMsg)
 	require.ErrorContains(t,
 		err,
 		"internal error: codespace: sdk, code: 11",
@@ -250,16 +227,7 @@ func TestMultipleMessages(t *testing.T) {
 	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
 
 	accountA := GenAccount(t, &suite.ChainA)
-	dataMsg := fmt.Sprintf(`{"hello": { "data": "%s" }}`, testBinary)
-	dataCosmosMsg := w.CosmosMsg{
-		Wasm: &w.WasmMsg{
-			Execute: &w.ExecuteMsg{
-				ContractAddr: suite.ChainB.Tester.String(),
-				Msg:          []byte(dataMsg),
-				Funds:        []w.Coin{},
-			},
-		},
-	}
+	dataCosmosMsg := HelloMessage(suite.ChainA.Tester, testBinary)
 
 	noDataCosmosMsg := w.CosmosMsg{
 		Distribution: &w.DistributionMsg{
@@ -269,16 +237,16 @@ func TestMultipleMessages(t *testing.T) {
 		},
 	}
 
-	callback, err := suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	callback, err := suite.RoundtripExecute(t, path, &accountA, dataCosmosMsg, noDataCosmosMsg)
 	require.NoError(t, err)
 	response := unmarshalExecute(t, callback.Ok.Result[0].Data).Data
-	require.Equal(t, "hello", string(response))
+	require.Equal(t, testText, string(response))
 	require.Equal(t, []byte(nil), callback.Ok.Result[1].Data)
 
-	callback, err = suite.RoundtripExecute(t, path, &accountA, []any{dataCosmosMsg, noDataCosmosMsg})
+	callback, err = suite.RoundtripExecute(t, path, &accountA, dataCosmosMsg, noDataCosmosMsg)
 	require.NoError(t, err)
 	response = unmarshalExecute(t, callback.Ok.Result[0].Data).Data
-	require.Equal(t, "hello", string(response))
+	require.Equal(t, testText, string(response))
 	require.Equal(t, []byte(nil), callback.Ok.Result[1].Data)
 }
 
@@ -310,3 +278,82 @@ func TestOneVoicePerNote(t *testing.T) {
 		"two voices may not be connected to the same note",
 	)
 }
+
+// Executes a "hello" call to chain B's tester contract via the chain
+// A->B Polytone connection. Checks that:
+//
+//  1. Before execution, the sender does not have a remote account that
+//     is queryable.
+//  2. After execution they do.
+//  3. The query response matches the callback response, matches the
+//     address that executed the "hello" call on chain B.
+func TestRemoteAddressBookkeeping(t *testing.T) {
+	suite := NewSuite(t)
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	account := GenAccount(t, &suite.ChainA)
+	remoteAccount := QueryRemoteAccount(
+		suite.ChainA.Chain,
+		suite.ChainA.Note,
+		account.Address,
+	)
+	require.Equal(t,
+		`null`,
+		remoteAccount,
+		"no remote account exists before a message is sent",
+	)
+
+	callback, err := suite.RoundtripExecute(t, path, &account)
+	require.NoError(t, err, "executing no messages should create an account")
+	remoteAccount = QueryRemoteAccount(
+		suite.ChainA.Chain,
+		suite.ChainA.Note,
+		account.Address,
+	)
+	require.Equal(
+		t,
+		`"`+callback.Ok.ExecutedBy+`"`,
+		remoteAccount,
+		"account created matches account returned by callback",
+	)
+}
+
+// Executes a hello call and a bank message to send more tokens than
+// the proxy has. Verifies that an error callback was returned with
+// the correct message index and that the hello call is not reflected
+// in the tester's hello history (it was rolled back).
+func TestErrorReturnsErrorAndRollsBack(t *testing.T) {
+	suite := NewSuite(t)
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	account := GenAccount(t, &suite.ChainA)
+	hello := HelloMessage(suite.ChainB.Tester, testBinary)
+	bankMsg := w.CosmosMsg{
+		Bank: &w.BankMsg{
+			Send: &w.SendMsg{
+				ToAddress: suite.ChainB.Voice.String(),
+				Amount: []w.Coin{
+					w.Coin{
+						Denom:  suite.ChainB.Chain.App.StakingKeeper.BondDenom(suite.ChainB.Chain.GetContext()),
+						Amount: "100",
+					},
+				},
+			},
+		},
+	}
+	callback, err := suite.RoundtripExecute(t, path, &account, hello, bankMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t,
+		CallbackDataExecute{
+			Err: "codespace: wasm, code: 5",
+		},
+		callback,
+		"proxy errored during execution",
+	)
+}
+
+// test multi-message loop between chains
+
+// test execution fail returns error

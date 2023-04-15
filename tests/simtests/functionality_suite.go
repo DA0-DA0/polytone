@@ -2,11 +2,13 @@ package simtests
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"testing"
 
 	wasmapp "github.com/CosmWasm/wasmd/app"
 	"github.com/CosmWasm/wasmd/x/wasm/ibctesting"
+	w "github.com/CosmWasm/wasmvm/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	channeltypes "github.com/cosmos/ibc-go/v4/modules/core/04-channel/types"
@@ -205,7 +207,10 @@ func (c *Chain) MintBondedDenom(t *testing.T, to sdk.AccAddress) {
 	require.NoError(t, err)
 }
 
-func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (CallbackDataExecute, error) {
+func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs ...w.CosmosMsg) (CallbackDataExecute, error) {
+	if msgs == nil {
+		msgs = []w.CosmosMsg{}
+	}
 	msg := NoteExecuteMsg{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
@@ -217,15 +222,18 @@ func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *A
 	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Execute: &msg,
 	})
-	if callback.InternalError != "" && err == nil {
-		return callback.Execute, errors.New("internal error: " + callback.InternalError)
+	if callback.FatalError != "" && err == nil {
+		return callback.Execute, errors.New("internal error: " + callback.FatalError)
 	}
 
 	return callback.Execute, err
 }
 
-func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Account, msgs []any) (CallbackDataQuery, error) {
-	msg := NoteQuery{
+func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Account, msgs ...w.QueryRequest) (CallbackDataQuery, error) {
+	if msgs == nil {
+		msgs = []w.QueryRequest{}
+	}
+	msg := NoteExecuteQuery{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
 		Callback: CallbackRequest{
@@ -236,8 +244,8 @@ func (s *Suite) RoundtripQuery(t *testing.T, path *ibctesting.Path, account *Acc
 	callback, err := s.RoundtripMessage(t, path, account, NoteExecute{
 		Query: &msg,
 	})
-	if callback.InternalError != "" && err == nil {
-		return callback.Query, errors.New(callback.InternalError)
+	if callback.FatalError != "" && err == nil {
+		return callback.Query, errors.New(callback.FatalError)
 	}
 	return callback.Query, err
 }
@@ -258,4 +266,19 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)
 
 	return callback.Result, nil
+}
+
+func HelloMessage(to sdk.AccAddress, data string) w.CosmosMsg {
+	return w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: to.String(),
+				Msg: []byte(
+					fmt.Sprintf(`{"hello": { "data": "%s" }}`,
+						data,
+					)),
+				Funds: []w.Coin{},
+			},
+		},
+	}
 }
