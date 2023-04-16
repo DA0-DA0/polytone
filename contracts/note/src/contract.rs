@@ -8,8 +8,8 @@ use polytone::callback::CallbackRequestType;
 use polytone::{callback, ibc};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, Pair, QueryMsg};
 
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Pair, QueryMsg};
 use crate::state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT, CONTROLLER};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-note";
@@ -138,5 +138,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .may_load(deps.storage, &deps.api.addr_validate(&local_address)?)?,
         ),
         QueryMsg::BlockMaxGas => to_binary(&BLOCK_MAX_GAS.load(deps.storage)?),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    match msg {
+        MigrateMsg::WithUpdate { block_max_gas } => {
+            BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
+            Ok(Response::default().add_attribute("method", "migrate_with_update"))
+        }
     }
 }

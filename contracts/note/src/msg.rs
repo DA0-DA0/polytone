@@ -93,3 +93,10 @@ pub struct Pair {
     pub connection_id: String,
     pub remote_port: String,
 }
+
+#[cw_serde]
+pub enum MigrateMsg {
+    WithUpdate {
+        block_max_gas: Uint64,
+    }
+}
