@@ -66,6 +66,11 @@ impl SuiteBuilder {
         self.instantiate.block_max_gas = limit;
         self
     }
+
+    pub fn with_pair(mut self, pair: Pair) -> Self {
+        self.instantiate.pair = Some(pair);
+        self
+    }
 }
 
 // queries
@@ -84,7 +89,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn query_active_channel(&self) -> String {
+    pub fn _query_active_channel(&self) -> String {
         self.app
             .wrap()
             .query_wasm_smart(&self.note_address, &ActiveChannel)
@@ -115,6 +120,11 @@ impl Suite {
 impl Suite {
     pub fn assert_block_max_gas(&self, val: u64) {
         let curr = self.query_block_max_gas();
+        assert_eq!(curr, val);
+    }
+
+    pub fn assert_pair(&self, val: Option<Pair>) {
+        let curr = self.query_pair();
         assert_eq!(curr, val);
     }
 }
