@@ -217,7 +217,48 @@ func TestVoiceOutOfGas(t *testing.T) {
 
 func TestNoteOutOfGas(t *testing.T) {
 	suite := NewSuite(t)
-	// TODO
+	
+	pathAB := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+	pathBA := suite.SetupDefaultPath(&suite.ChainB, &suite.ChainA)
+
+	accountA := GenAccount(t, &suite.ChainA)
+	accountB := GenAccount(t, &suite.ChainB)
+
+	hello := `{"hello": { "data": "" }}`
+	helloMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainB.Tester.String(),
+				Msg:          []byte(hello),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+	// execute hello on remote chain from new account
+	callback, err := suite.RoundtripExecute(t, pathAB, &accountA, []any{helloMsg})
+	require.NoError(t, err, "out-of-gas should not error")
+	require.Equal(t, Callback{Success: []string{""}}, callback)
+
+	gasMsg := `{"run_out_of_gas":{}}`
+	gasCosmosgMsg := w.CosmosMsg{
+		Wasm: &w.WasmMsg{
+			Execute: &w.ExecuteMsg{
+				ContractAddr: suite.ChainA.Tester.String(),
+				Msg:          []byte(gasMsg),
+				Funds:        []w.Coin{},
+			},
+		},
+	}
+	// submit back an out of gas message and assert no errors
+	b, err := suite.RoundtripExecute(t, pathBA, &accountB, []any{gasCosmosgMsg})
+	require.NoError(t, err, "out-of-gas should not error")
+	require.Equal(t, Callback{
+		Error: "codespace: sdk, code: 11",
+	}, b, "out-of-gas should return an ACK")
+
+	// TODO: 
+	// 1. validate that local to remote address mapping has been set
+	// 2. validate that state change is not reverted (new account)
 }
 
 // Tests executing a message on the remote chain, checking the
