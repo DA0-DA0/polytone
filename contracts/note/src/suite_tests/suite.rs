@@ -1,8 +1,8 @@
-use cosmwasm_std::{Empty, Addr, Uint64};
-use cw_multi_test::{ContractWrapper, Contract, App, Executor, AppResponse};
+use cosmwasm_std::{Addr, Empty, Uint64};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
+use crate::msg::QueryMsg::{ActiveChannel, BlockMaxGas, Pair as PairQuery};
 use crate::msg::{InstantiateMsg, MigrateMsg, Pair};
-use crate::msg::QueryMsg::{Pair as PairQuery, BlockMaxGas, ActiveChannel};
 
 pub const CREATOR_ADDR: &str = "creator";
 
@@ -33,7 +33,8 @@ impl Default for SuiteBuilder {
             instantiate: InstantiateMsg {
                 block_max_gas: Uint64::zero(),
                 pair: None,
-            }
+                controller: None,
+            },
         }
     }
 }
@@ -44,15 +45,16 @@ impl SuiteBuilder {
 
         let note_code = app.store_code(note_contract());
 
-        let note_address = app.instantiate_contract(
-            note_code, 
-            Addr::unchecked(CREATOR_ADDR), 
-            &self.instantiate, 
-            &[], 
-            "note contract", 
-            Some(CREATOR_ADDR.to_string()),
-        )
-        .unwrap();
+        let note_address = app
+            .instantiate_contract(
+                note_code,
+                Addr::unchecked(CREATOR_ADDR),
+                &self.instantiate,
+                &[],
+                "note contract",
+                Some(CREATOR_ADDR.to_string()),
+            )
+            .unwrap();
 
         Suite {
             app,
@@ -99,20 +101,15 @@ impl Suite {
 
 // migrate
 impl Suite {
-    pub fn update(
-        &mut self,
-        sender: Addr,
-        block_max_gas: u64,
-    ) -> anyhow::Result<AppResponse> {
-        self.app
-            .migrate_contract(
-                sender, 
-                self.note_address.clone(), 
-                &MigrateMsg::WithUpdate { 
-                    block_max_gas: block_max_gas.into() 
-                },
-                self.note_code
-            )
+    pub fn update(&mut self, sender: Addr, block_max_gas: u64) -> anyhow::Result<AppResponse> {
+        self.app.migrate_contract(
+            sender,
+            self.note_address.clone(),
+            &MigrateMsg::WithUpdate {
+                block_max_gas: block_max_gas.into(),
+            },
+            self.note_code,
+        )
     }
 }
 

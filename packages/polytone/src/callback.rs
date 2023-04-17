@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, Response,
-    StdResult, Storage, SubMsgResponse, Uint64, WasmMsg,
+    to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, StdResult,
+    Storage, SubMsgResponse, Uint64, WasmMsg,
 };
 use cw_storage_plus::{Item, Map};
 
@@ -145,26 +145,18 @@ pub fn on_ack(
         original_packet,
         ..
     }: &IbcPacketAckMsg,
-) -> Option<SubMsg> {
-    let Some(request) = CALLBACKS.may_load(
-        storage,
-        original_packet.sequence
-    )
-    .unwrap() else {
-        return None
+) -> Option<CosmosMsg> {
+    let Some(request) = CALLBACKS.may_load(storage, original_packet.sequence).unwrap() else {
+	return None
     };
     CALLBACKS.remove(storage, original_packet.sequence);
     let result = unmarshal_ack(acknowledgement);
-
     if let Callback::Execute(Ok(ExecutionResponse { executed_by, .. })) = &result {
         LOCAL_TO_REMOTE_ACCOUNT
             .save(storage, &request.initiator, executed_by)
             .expect("strings can be serialized");
     }
-
-    let submsg = SubMsg::reply_on_error(callback_msg(request, result), original_packet.sequence);
-
-    Some(submsg)
+    Some(callback_msg(request, result))
 }
 
 /// Call on every packet timeout. Returns a callback message to execute,
@@ -186,15 +178,6 @@ pub fn on_timeout(
         })),
     };
     Some(callback_msg(request, result))
-}
-
-pub fn on_reply(sequence_id: u64, result: SubMsgResult) -> Response {
-    match result {
-        SubMsgResult::Err(e) => Response::default()
-            .add_attribute("callback_error", sequence_id.to_string())
-            .add_attribute("error", e),
-        SubMsgResult::Ok(_) => unreachable!("callbacks reply_on_error"),
-    }
 }
 
 #[cw_serde]

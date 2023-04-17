@@ -33,6 +33,7 @@ var (
 	NoteQueryActiveChannel = `"active_channel"`
 	NoteQueryPair          = `"pair"`
 	NoteQueryController    = `"controller"`
+	NoteQueryBlockMaxGas   = `"block_max_gas"`
 	NoteQueryRemoteAddress = func(local_address string) string {
 		return fmt.Sprintf(`{"remote_address":{"local_address":"%s"}}`, local_address)
 	}
@@ -197,6 +198,21 @@ func QueryController(
 		chain.GetContext(),
 		note,
 		[]byte(NoteQueryController),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return string(query)
+}
+
+func QueryBlockMaxGas(
+	chain *ibctesting.TestChain,
+	note sdk.AccAddress,
+) string {
+	query, err := chain.App.WasmKeeper.QuerySmart(
+		chain.GetContext(),
+		note,
+		[]byte(NoteQueryBlockMaxGas),
 	)
 	if err != nil {
 		panic(err)

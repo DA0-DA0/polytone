@@ -265,7 +265,6 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 	require.Equal(t, len(startCallbacks)+1, len(callbacks), "no new callbacks")
 	callback := callbacks[len(callbacks)-1]
 	require.Equal(t, account.Address.String(), callback.Initiator)
-	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)
 
 	return callback.Result, nil
 }
