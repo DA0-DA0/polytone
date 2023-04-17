@@ -88,7 +88,6 @@ pub fn execute(
             if let Some(sender) = on_behalf_of {
                 deps.api.addr_validate(&sender)
             } else {
-                // Note is controlled, but on_behalf_of is not set
                 return Err(ContractError::OnBehalfOfNotSet);
             }
         }
@@ -129,6 +128,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 remote_port,
             },
         )),
+        QueryMsg::Controller => to_binary(&CONTROLLER.may_load(deps.storage)?),
         QueryMsg::RemoteAddress { local_address } => to_binary(
             &callback::LOCAL_TO_REMOTE_ACCOUNT
                 .may_load(deps.storage, &deps.api.addr_validate(&local_address)?)?,

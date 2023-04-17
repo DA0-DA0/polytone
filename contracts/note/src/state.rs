@@ -8,4 +8,6 @@ pub const CONNECTION_REMOTE_PORT: Item<(String, String)> = Item::new("a");
 /// no channel is active.
 pub const CHANNEL: Item<String> = Item::new("b");
 
+/// The controller of this note. See documentation for the
+/// `controller` field on `InstantiateMsg` for more information.
 pub const CONTROLLER: Item<Addr> = Item::new("c");

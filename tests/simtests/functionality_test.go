@@ -406,6 +406,9 @@ func TestQueryErrors(t *testing.T) {
 	)
 }
 
+// Tests that the data returned in a callback contains the address of
+// instantiated contracts and can be accessed by
+// parse_reply_instantiate_data.
 func TestInstantiateExecute(t *testing.T) {
 	suite := NewSuite(t)
 
@@ -437,6 +440,7 @@ func TestInstantiateExecute(t *testing.T) {
 	require.NotEmpty(t, response.Address, "address should not be empty")
 }
 
+// Tests that controller semantics work if one is set.
 func TestControlledNote(t *testing.T) {
 	suite := NewSuite(t)
 
@@ -445,6 +449,9 @@ func TestControlledNote(t *testing.T) {
 		Controller: accountController.Address.String(),
 	})
 	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	controller := QueryController(suite.ChainA.Chain, suite.ChainA.Note)
+	require.Equal(t, `"`+accountController.Address.String()+`"`, controller)
 
 	accountA := GenAccount(t, &suite.ChainA)
 
@@ -465,7 +472,3 @@ func TestControlledNote(t *testing.T) {
 	_, err = suite.RoundtripExecuteControlled(t, path, &accountController, "", hello)
 	require.Contains(t, err.Error(), "Note is controlled, but 'on_behalf_of' is not set")
 }
-
-// test multi-message loop between chains
-
-// test execution fail returns error
