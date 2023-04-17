@@ -12,6 +12,7 @@ import (
 )
 
 type NoteInstantiate struct {
+	Controller string `json:"controller,omitempty"`
 }
 
 type VoiceInstantiate struct {
@@ -30,6 +31,7 @@ type NoteExecute struct {
 var (
 	NoteQueryActiveChannel = `"active_channel"`
 	NoteQueryPair          = `"pair"`
+	NoteQueryController    = `"controller"`
 	NoteQueryRemoteAddress = func(local_address string) string {
 		return fmt.Sprintf(`{"remote_address":{"local_address":"%s"}}`, local_address)
 	}
@@ -42,6 +44,7 @@ type NoteExecuteQuery struct {
 }
 
 type NoteExecuteMsg struct {
+	OnBehalfOf     string           `json:"on_behalf_of,omitempty"`
 	Msgs           []w.CosmosMsg    `json:"msgs"`
 	TimeoutSeconds uint64           `json:"timeout_seconds,string"`
 	Callback       *CallbackRequest `json:"callback,omitempty"`
@@ -178,6 +181,21 @@ func QueryRemoteAccount(
 		chain.GetContext(),
 		note,
 		[]byte(NoteQueryRemoteAddress(local_address.String())),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return string(query)
+}
+
+func QueryController(
+	chain *ibctesting.TestChain,
+	note sdk.AccAddress,
+) string {
+	query, err := chain.App.WasmKeeper.QuerySmart(
+		chain.GetContext(),
+		note,
+		[]byte(NoteQueryController),
 	)
 	if err != nil {
 		panic(err)

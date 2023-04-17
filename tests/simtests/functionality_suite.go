@@ -268,6 +268,47 @@ func (s *Suite) RoundtripMessage(t *testing.T, path *ibctesting.Path, account *A
 	return callback.Result, nil
 }
 
+func (s *Suite) RoundtripExecuteControlled(t *testing.T, path *ibctesting.Path, controller *Account, account string, msgs ...w.CosmosMsg) (CallbackDataExecute, error) {
+	if msgs == nil {
+		msgs = []w.CosmosMsg{}
+	}
+	msg := NoteExecuteMsg{
+		OnBehalfOf:     account,
+		Msgs:           msgs,
+		TimeoutSeconds: 100,
+		Callback: &CallbackRequest{
+			Receiver: controller.SuiteChain.Tester.String(),
+			Msg:      "aGVsbG8K",
+		},
+	}
+	callback, err := s.RoundtripMessageControlled(t, path, controller, account, NoteExecute{
+		Execute: &msg,
+	})
+	if callback.FatalError != "" && err == nil {
+		return callback.Execute, errors.New("internal error: " + callback.FatalError)
+	}
+
+	return callback.Execute, err
+}
+
+func (s *Suite) RoundtripMessageControlled(t *testing.T, path *ibctesting.Path, controller *Account, account string, msg NoteExecute) (Callback, error) {
+	startCallbacks := QueryCallbackHistory(controller.Chain, controller.SuiteChain.Tester)
+	wasmMsg := controller.WasmExecute(&controller.SuiteChain.Note, msg)
+	if _, err := controller.Send(t, wasmMsg); err != nil {
+		return Callback{}, err
+	}
+	if err := s.Coordinator.RelayAndAckPendingPackets(path); err != nil {
+		return Callback{}, err
+	}
+	callbacks := QueryCallbackHistory(controller.Chain, controller.SuiteChain.Tester)
+	require.Equal(t, len(startCallbacks)+1, len(callbacks), "no new callbacks")
+	callback := callbacks[len(callbacks)-1]
+	require.Equal(t, account, callback.Initiator)
+	require.Equal(t, "aGVsbG8K", callback.InitiatorMsg)
+
+	return callback.Result, nil
+}
+
 func HelloMessage(to sdk.AccAddress, data string) w.CosmosMsg {
 	return w.CosmosMsg{
 		Wasm: &w.WasmMsg{
