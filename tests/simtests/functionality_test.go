@@ -432,7 +432,7 @@ func TestQueryErrors(t *testing.T) {
 		CallbackDataQuery{
 			Err: ErrorResponse{
 				MessageIndex: 1,
-				Error:        "codespace: wasm, code: 9",
+				Error:        "contract: codespace: wasm, code: 9",
 			},
 		},
 		callback,
