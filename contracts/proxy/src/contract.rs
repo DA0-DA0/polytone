@@ -39,20 +39,22 @@ pub fn execute(
     match msg {
         ExecuteMsg::Proxy { msgs } => {
             if info.sender == INSTANTIATOR.load(deps.storage)? {
-                COLLECTOR.save(deps.storage, &vec![None; msgs.len()])?;
-                Ok(Response::default()
+                let response = Response::default()
                     .add_attribute("method", "execute_proxy")
-                    .add_attribute("sender", info.sender)
-                    .add_submessages(
-                        msgs.into_iter()
-                            .enumerate()
-                            .map(|(id, msg)| SubMsg::reply_always(msg, id as u64)),
-                    )
-                    // handle `msgs.is_empty()` case
-                    .set_data(ack_execute_success(
+                    .add_attribute("sender", info.sender);
+                if msgs.is_empty() {
+                    Ok(response.set_data(ack_execute_success(
                         vec![],
                         env.contract.address.into_string(),
                     )))
+                } else {
+                    COLLECTOR.save(deps.storage, &vec![None; msgs.len()])?;
+                    Ok(response.add_submessages(
+                        msgs.into_iter()
+                            .enumerate()
+                            .map(|(id, msg)| SubMsg::reply_always(msg, id as u64)),
+                    ))
+                }
             } else {
                 Err(ContractError::NotInstantiator)
             }

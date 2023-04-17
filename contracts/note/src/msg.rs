@@ -32,6 +32,15 @@ pub struct InstantiateMsg {
     ///
     /// <https://github.com/DA0-DA0/polytone/wiki/How-Polytone-Supports-Outposts>
     pub controller: Option<String>,
+
+    /// The max gas allowed in a transaction. When returning callbacks
+    /// the module will use this to calculate the amount of gas to
+    /// save for handling a callback error. This protects from
+    /// callbacks that run out of gas preventing ACKs or timeouts from
+    /// being returned.
+    ///
+    /// The contract admin can update with `MigrateMsg::WithUpdate`.
+    pub block_max_gas: Uint64,
 }
 
 #[cw_serde]
@@ -79,6 +88,9 @@ pub enum QueryMsg {
     /// `local_address`.
     #[returns(Option<String>)]
     RemoteAddress { local_address: String },
+    /// Currently set gas limit
+    #[returns(Uint64)]
+    BlockMaxGas,
 }
 
 /// This contract's voice. There is one voice per note, and many notes
@@ -87,4 +99,11 @@ pub enum QueryMsg {
 pub struct Pair {
     pub connection_id: String,
     pub remote_port: String,
+}
+
+#[cw_serde]
+pub enum MigrateMsg {
+    /// Updates the contract's configuration. To update the config
+    /// without updating the code, migrate to the same code ID.
+    WithUpdate { block_max_gas: Uint64 },
 }

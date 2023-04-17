@@ -3,14 +3,19 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
     IbcChannelOpenResponse, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
-    IbcReceiveResponse, Never, Reply, Response, SubMsg, SubMsgResult,
+    IbcReceiveResponse, Never, Reply, Response, SubMsg,
 };
 use polytone::{callback, handshake::note};
 
 use crate::{
     error::ContractError,
-    state::{CHANNEL, CONNECTION_REMOTE_PORT},
+    state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT},
 };
+
+/// The amount of gas that needs to be reserved for handling a
+/// callback error in the reply method. See `TestNoteOutOfGas` in the
+/// simulation tests for a test that can be used to tune thise.
+const ERR_GAS_NEEDED: u64 = 101_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(
@@ -89,11 +94,19 @@ pub fn ibc_packet_ack(
     _env: Env,
     ack: IbcPacketAckMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    let callback = callback::on_ack(deps.storage, &ack);
+    let callback = callback::on_ack(deps.storage, &ack).map(|cosmos_msg| {
+        SubMsg::reply_on_error(cosmos_msg, ack.original_packet.sequence).with_gas_limit(
+            BLOCK_MAX_GAS
+                .load(deps.storage)
+                .expect("set during instantiation")
+                - ERR_GAS_NEEDED,
+        )
+    });
+
     Ok(IbcBasicResponse::default()
         .add_attribute("method", "ibc_packet_ack")
         .add_attribute("sequence_number", ack.original_packet.sequence.to_string())
-        .add_submessages(callback.map(|c| SubMsg::reply_on_error(c, ack.original_packet.sequence))))
+        .add_submessages(callback))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -102,20 +115,26 @@ pub fn ibc_packet_timeout(
     _env: Env,
     msg: IbcPacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    let callback = callback::on_timeout(deps.storage, &msg);
+    let callback = callback::on_timeout(deps.storage, &msg).map(|cosmos_msg| {
+        SubMsg::reply_on_error(cosmos_msg, msg.packet.sequence).with_gas_limit(
+            BLOCK_MAX_GAS
+                .load(deps.storage)
+                .expect("set during instantiation")
+                - ERR_GAS_NEEDED,
+        )
+    });
+
     Ok(IbcBasicResponse::default()
         .add_attribute("method", "ibc_packet_timeout")
         .add_attribute("sequence_number", msg.packet.sequence.to_string())
-        .add_submessages(callback.map(|c| SubMsg::reply_on_error(c, msg.packet.sequence))))
+        .add_submessages(callback))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let sequence = msg.id;
-    match msg.result {
-        SubMsgResult::Err(e) => Ok(Response::default()
-            .add_attribute("callback_error", sequence.to_string())
-            .add_attribute("error", e)),
-        SubMsgResult::Ok(_) => unreachable!("callbacks reply_on_error"),
-    }
+    Ok(Response::default()
+        .add_attribute("method", "reply_callback_error")
+        .add_attribute("packet_sequence", sequence.to_string())
+        .add_attribute("callback_error", msg.result.unwrap_err()))
 }

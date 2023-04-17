@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	wasmapp "github.com/CosmWasm/wasmd/app"
 	w "github.com/CosmWasm/wasmvm/types"
 	"github.com/stretchr/testify/require"
 )
@@ -215,6 +216,39 @@ func TestVoiceOutOfGas(t *testing.T) {
 	)
 }
 
+// Tests that if a callback receiver runs out of gas the ACK is still
+// comitted on the sending chain and the local to remote address
+// mapping is still updated.
+func TestNoteOutOfGas(t *testing.T) {
+	suite := NewSuite(t)
+
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+	account := GenAccount(t, &suite.ChainA)
+	msg := NoteExecute{
+		Execute: &NoteExecuteMsg{
+			Msgs:           []w.CosmosMsg{},
+			TimeoutSeconds: 300,
+			Callback: &CallbackRequest{
+				Receiver: suite.ChainA.Tester.String(),
+				Msg:      "cnVuX291dF9vZl9nYXM=", // run_out_of_gas base64
+			},
+		},
+	}
+	startCallbacks := QueryCallbackHistory(account.Chain, account.SuiteChain.Tester)
+	wasmMsg := account.WasmExecute(&account.SuiteChain.Note, msg)
+	if _, err := account.Send(t, wasmMsg); err != nil {
+		require.NoError(t, err)
+	}
+	if err := suite.Coordinator.RelayAndAckPendingPackets(path); err != nil {
+		require.NoError(t, err)
+	}
+	callbacks := QueryCallbackHistory(account.Chain, account.SuiteChain.Tester)
+	require.Equal(t, len(startCallbacks), len(callbacks), "no new callbacks")
+
+	remote := QueryRemoteAccount(suite.ChainA.Chain, suite.ChainA.Note, account.Address)
+	require.NotEmpty(t, remote, "remote account set even though callback rolled back")
+}
+
 // Tests executing a message on the remote chain, checking the
 // callback, and then executing another message.
 //
@@ -398,7 +432,7 @@ func TestQueryErrors(t *testing.T) {
 		CallbackDataQuery{
 			Err: ErrorResponse{
 				MessageIndex: 1,
-				Error:        "codespace: wasm, code: 9",
+				Error:        "contract: codespace: wasm, code: 9",
 			},
 		},
 		callback,
@@ -446,7 +480,8 @@ func TestControlledNote(t *testing.T) {
 
 	accountController := GenAccount(t, &suite.ChainA)
 	suite.ChainA.Note = Instantiate(t, suite.ChainA.Chain, 1, NoteInstantiate{
-		Controller: accountController.Address.String(),
+		Controller:  accountController.Address.String(),
+		BlockMaxGas: 2 * wasmapp.DefaultGas,
 	})
 	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
 

@@ -47,6 +47,10 @@ pub fn execute(
             Ok(response)
         }
         ExecuteMsg::Callback(callback) => {
+            // run_out_of_gas base64 = `cnVuX291dF9vZl9nYXM=`
+            if callback.initiator_msg.to_string() == "cnVuX291dF9vZl9nYXM=" {
+                return execute(deps, env, info, ExecuteMsg::RunOutOfGas {});
+            }
             let mut h = CALLBACK_HISTORY.load(deps.storage)?;
             h.push(callback);
             CALLBACK_HISTORY.save(deps.storage, &h)?;
