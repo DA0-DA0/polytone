@@ -75,7 +75,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
     match msg.result {
         SubMsgResult::Err(error) => Err(ContractError::MsgError {
-            index: collector.len() as u64,
+            index: msg.id,
             error,
         }),
         SubMsgResult::Ok(res) => {
