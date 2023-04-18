@@ -55,7 +55,8 @@ pub fn ibc_channel_connect(
     )?;
     Ok(IbcBasicResponse::new()
         .add_attribute("method", "ibc_channel_connect")
-        .add_attribute("channel_id", msg.channel().endpoint.channel_id.clone()))
+        .add_attribute("channel_id", msg.channel().endpoint.channel_id.as_str())
+        .add_attribute("connection_id", msg.channel().connection_id.as_str()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -67,7 +68,7 @@ pub fn ibc_channel_close(
     CHANNEL_TO_CONNECTION.remove(deps.storage, msg.channel().endpoint.channel_id.clone());
     Ok(IbcBasicResponse::default()
         .add_attribute("method", "ibc_channel_close")
-        .add_attribute("connection_id", msg.channel().connection_id.clone())
+        .add_attribute("connection_id", msg.channel().connection_id.as_str())
         .add_attribute(
             "counterparty_port_id",
             msg.channel().counterparty_endpoint.port_id.clone(),
@@ -80,29 +81,36 @@ pub fn ibc_packet_receive(
     env: Env,
     msg: IbcPacketReceiveMsg,
 ) -> Result<IbcReceiveResponse, Never> {
-    Ok(IbcReceiveResponse::default().add_submessage(SubMsg {
-        id: REPLY_ACK,
-        msg: WasmMsg::Execute {
-            contract_addr: env.contract.address.into_string(),
-            msg: to_binary(&ExecuteMsg::Rx {
-                connection_id: CHANNEL_TO_CONNECTION
-                    .load(deps.storage, msg.packet.dest.channel_id)
-                    .expect("handshake sets mapping"),
-                counterparty_port: msg.packet.src.port_id,
-                data: msg.packet.data,
-            })
-            .unwrap(),
-            funds: vec![],
-        }
-        .into(),
-        gas_limit: Some(
-            BLOCK_MAX_GAS
-                .load(deps.storage)
-                .expect("set during instantiation")
-                - ACK_GAS_NEEDED,
-        ),
-        reply_on: cosmwasm_std::ReplyOn::Always,
-    }))
+    let connection_id = CHANNEL_TO_CONNECTION
+        .load(deps.storage, msg.packet.dest.channel_id.clone())
+        .expect("handshake sets mapping");
+    Ok(IbcReceiveResponse::default()
+        .add_attribute("method", "ibc_packet_receive")
+        .add_attribute("connection_id", connection_id.as_str())
+        .add_attribute("channel_id", msg.packet.dest.channel_id.as_str())
+        .add_attribute("counterparty_port", msg.packet.src.port_id.as_str())
+        .add_attribute("packet_sequence", msg.packet.sequence.to_string())
+        .add_submessage(SubMsg {
+            id: REPLY_ACK,
+            msg: WasmMsg::Execute {
+                contract_addr: env.contract.address.into_string(),
+                msg: to_binary(&ExecuteMsg::Rx {
+                    connection_id,
+                    counterparty_port: msg.packet.src.port_id,
+                    data: msg.packet.data,
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into(),
+            gas_limit: Some(
+                BLOCK_MAX_GAS
+                    .load(deps.storage)
+                    .expect("set during instantiation")
+                    - ACK_GAS_NEEDED,
+            ),
+            reply_on: cosmwasm_std::ReplyOn::Always,
+        }))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -26,7 +26,9 @@ pub fn instantiate(
 
     BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
 
-    let mut response = Response::default().add_attribute("method", "instantiate");
+    let mut response = Response::default()
+        .add_attribute("method", "instantiate")
+        .add_attribute("block_max_gas", msg.block_max_gas);
 
     if let Some(Pair {
         connection_id,
@@ -43,6 +45,7 @@ pub fn instantiate(
         response = response.add_attribute("controller", controller.to_string());
         CONTROLLER.save(deps.storage, &deps.api.addr_validate(&controller)?)?;
     }
+
     Ok(response)
 }
 
@@ -79,23 +82,19 @@ pub fn execute(
         ),
     };
 
-    // Check if the note is controlled
-    let sender = match CONTROLLER.load(deps.storage) {
-        Ok(controller) => {
+    let sender = match CONTROLLER.may_load(deps.storage)? {
+        Some(controller) => {
             if controller != info.sender {
                 return Err(ContractError::NotController);
             }
 
-            // Note is controlled and controller is the sender
-            // now verify we have on_behalf_of set to know who
-            // the real sender is
             if let Some(sender) = on_behalf_of {
                 deps.api.addr_validate(&sender)
             } else {
                 return Err(ContractError::OnBehalfOfNotSet);
             }
         }
-        Err(_) => Ok(info.sender),
+        None => Ok(info.sender),
     }?;
 
     callback::request_callback(
@@ -109,6 +108,7 @@ pub fn execute(
     let channel_id = CHANNEL
         .may_load(deps.storage)?
         .ok_or(ContractError::NoPair)?;
+
     Ok(Response::default()
         .add_attribute("method", "execute")
         .add_message(IbcMsg::SendPacket {

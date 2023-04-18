@@ -29,7 +29,10 @@ pub fn instantiate(
     PROXY_CODE_ID.save(deps.storage, &msg.proxy_code_id.u64())?;
     BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
 
-    Ok(Response::default().add_attribute("method", "instantiate"))
+    Ok(Response::default()
+        .add_attribute("method", "instantiate")
+        .add_attribute("proxy_code_id", msg.proxy_code_id)
+        .add_attribute("block_max_gas", msg.block_max_gas))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -66,13 +69,16 @@ pub fn execute(
                             };
                             return Ok(Response::default()
                                 .add_attribute("method", "rx_query_fail")
+                                .add_attribute("query_index", results.len().to_string())
+                                .add_attribute("query_error", error.as_str())
                                 .set_data(ack_query_fail(
                                     Uint64::new(results.len() as u64),
                                     error,
                                 )));
                         }
                         Ok(Response::default()
-                            .add_attribute("method", "rx_query")
+                            .add_attribute("method", "rx_query_success")
+                            .add_attribute("queries_executed", results.len().to_string())
                             .set_data(ack_query_success(results)))
                     }
                     Msg::Execute { msgs } => {
@@ -137,7 +143,7 @@ pub fn execute(
 ///
 /// `local_channel` is not attacker controlled and protects from
 /// collision from an attacker generated duplicate
-/// chain. `remote_channel` ensures that two different modules on the
+/// chain. `remote_port` ensures that two different modules on the
 /// same chain produce different addresses for the same
 /// `remote_sender`.
 fn salt(local_connection: &str, counterparty_port: &str, remote_sender: &str) -> Binary {
