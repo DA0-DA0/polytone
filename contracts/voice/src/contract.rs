@@ -59,9 +59,9 @@ pub fn execute(
                             let query_result = deps.querier.raw_query(&to_vec(&msg)?);
                             let error = match query_result {
                                 SystemResult::Ok(ContractResult::Err(error)) => {
-                                    format!("contract: {}", error)
+                                    format!("contract: {error}")
                                 }
-                                SystemResult::Err(error) => format!("system: {}", error),
+                                SystemResult::Err(error) => format!("system: {error}"),
                                 SystemResult::Ok(ContractResult::Ok(res)) => {
                                     results.push(res);
                                     continue;
