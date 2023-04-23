@@ -10,12 +10,12 @@ optimize:
         --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
         --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
         --platform linux/arm64 \
-        cosmwasm/rust-optimizer-arm64:0.12.12; else \
+        cosmwasm/workspace-optimizer-arm64:0.12.13; else \
     docker run --rm -v "$(pwd)":/code \
         --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
         --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
         --platform linux/amd64 \
-        cosmwasm/rust-optimizer:0.12.12; fi
+        cosmwasm/workspace-optimizer:0.12.13; fi
     mkdir -p tests/wasms
     if [[ $(uname -m) =~ "arm64" ]]; then \
     cp artifacts/polytone_note-aarch64.wasm tests/wasms/polytone_note.wasm && \
