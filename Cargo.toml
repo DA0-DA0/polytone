@@ -2,7 +2,6 @@
 members = [
   "packages/*",
   "contracts/*",
-  "tests/polytone-tester",
 ]
 
 [workspace.package]
@@ -29,7 +28,7 @@ polytone-note  = { path = "contracts/note" }
 polytone-voice = { path = "contracts/voice" }
 
 cosmwasm-schema = "1.2.1"
-cosmwasm-std    = { version = "1.2.1", features = ["ibc3"] }
+cosmwasm-std    = { version = "1.2.4", features = ["ibc3"] }
 cw-storage-plus = "1.0.1"
 cw-utils        = "1.0.1"
 cw2             = "1.0.1"
