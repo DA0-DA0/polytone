@@ -78,7 +78,7 @@ pub fn execute(
             Some(callback),
             timeout_seconds,
             CallbackRequestType::Query,
-            Some(info.sender.to_string()),
+            None,
         ),
     };
 
@@ -88,14 +88,22 @@ pub fn execute(
                 return Err(ContractError::NotController);
             }
 
-            if let Some(sender) = on_behalf_of {
-                deps.api.addr_validate(&sender)
+            if request_type == CallbackRequestType::Query {
+                info.sender
+            } else if let Some(sender) = on_behalf_of {
+                deps.api.addr_validate(&sender)?
             } else {
                 return Err(ContractError::OnBehalfOfNotSet);
             }
         }
-        None => Ok(info.sender),
-    }?;
+        None => {
+            if on_behalf_of.is_some() {
+                return Err(ContractError::NotControlledButOnBehalfIsSet);
+            } else {
+                info.sender
+            }
+        }
+    };
 
     callback::request_callback(
         deps.storage,
