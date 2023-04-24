@@ -1,6 +1,8 @@
 [workspace]
 members = [
+  "tests/polytone-tester",
   "packages/*",
+   # contracts must stay last so cw v1.2 feature will get added last
   "contracts/*",
 ]
 
