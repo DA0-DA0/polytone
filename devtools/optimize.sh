@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# workspace-optimizer only optimizes contracts in the `contracts/*`
+# folder, and needs to be invoked differently depending on the chip
+# archetecture, so this script exists to abstract that away.
+
 function cleanup {
   for folder in accessories/*
   do

@@ -4,19 +4,6 @@ build:
 test:
     cargo test
 
-move-accessories-for-optimizer:
-    for folder in accessories/*; \
-    do \
-      folder=${folder/'accessories/'}; \
-      cp -R accessories/$folder contracts/$folder \
-    ;done
-
-remove-accessories-for-optimizer:
-    for folder in accessories/* \
-    do \
-    rm -R ../contracts/$folder \
-    done
-
 optimize:
     ./devtools/optimize.sh
 
@@ -41,5 +28,8 @@ schema:
     echo "generating schema for ${f##*/}"; \
     cd "$f" && cargo schema && cd "$start" \
     ;done
-    echo "generating schema for polytone-tester"; \
-    cd tests/polytone-tester && cargo schema && cd -
+    for f in ./accessories/*; \
+    do \
+    echo "generating schema for ${f##*/}"; \
+    cd "$f" && cargo schema && cd "$start" \
+    ;done
