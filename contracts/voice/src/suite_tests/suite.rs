@@ -1,5 +1,5 @@
-use cw_multi_test::{App, ContractWrapper, Contract, Executor, AppResponse};
 use cosmwasm_std::{Addr, Empty, Uint64};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 use crate::msg::QueryMsg::{BlockMaxGas, ProxyCodeId};
 use crate::msg::{InstantiateMsg, MigrateMsg};
@@ -33,7 +33,7 @@ impl Default for SuiteBuilder {
             instantiate: InstantiateMsg {
                 proxy_code_id: Uint64::zero(),
                 block_max_gas: Uint64::zero(),
-            }
+            },
         }
     }
 }
@@ -44,15 +44,16 @@ impl SuiteBuilder {
 
         let voice_code = app.store_code(voice_contract());
 
-        let voice_address = app.instantiate_contract(
-            voice_code, 
-            Addr::unchecked(CREATOR_ADDR), 
-            &self.instantiate, 
-            &[], 
-            "voice contract", 
-            Some(CREATOR_ADDR.to_string()),
-        )
-        .unwrap();
+        let voice_address = app
+            .instantiate_contract(
+                voice_code,
+                Addr::unchecked(CREATOR_ADDR),
+                &self.instantiate,
+                &[],
+                "voice contract",
+                Some(CREATOR_ADDR.to_string()),
+            )
+            .unwrap();
 
         Suite {
             app,
@@ -71,7 +72,7 @@ impl SuiteBuilder {
 impl Suite {
     pub fn store_voice_contract(&mut self) -> u64 {
         self.app.store_code(voice_contract())
-    } 
+    }
 }
 
 // query
@@ -99,16 +100,15 @@ impl Suite {
         contract_id: u64,
         block_max_gas: u64,
     ) -> anyhow::Result<AppResponse> {
-        self.app
-            .migrate_contract(
-                sender, 
-                self.voice_address.clone(), 
-                &MigrateMsg::WithUpdate { 
-                    proxy_code_id: contract_id.into(),
-                    block_max_gas: block_max_gas.into(), 
-                }, 
-                self.voice_code,
-            )
+        self.app.migrate_contract(
+            sender,
+            self.voice_address.clone(),
+            &MigrateMsg::WithUpdate {
+                proxy_code_id: contract_id.into(),
+                block_max_gas: block_max_gas.into(),
+            },
+            self.voice_code,
+        )
     }
 }
 

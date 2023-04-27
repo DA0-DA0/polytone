@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	wasmapp "github.com/CosmWasm/wasmd/app"
 	w "github.com/CosmWasm/wasmvm/types"
 	"github.com/stretchr/testify/require"
 )
@@ -471,85 +470,4 @@ func TestInstantiateExecute(t *testing.T) {
 	// address should be: cosmos1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqa0dr5q
 	// But because it can change in the future, we just check its not empty
 	require.NotEmpty(t, response.Address, "address should not be empty")
-}
-
-// Tests that controller semantics work if one is set.
-func TestControlledNote(t *testing.T) {
-	suite := NewSuite(t)
-	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
-
-	accountA := GenAccount(t, &suite.ChainA)
-	accountController := GenAccount(t, &suite.ChainA)
-
-	// Executing a message with on_behalf_of set when the note is
-	// not controlled is an error.
-	_, err := suite.RoundtripExecuteControlled(t, path, &accountA, accountA.Address.String(), HelloMessage(suite.ChainB.Tester, ""))
-	require.ErrorContains(t, err, "Note is not controlled, but 'on_behalf_of' is set")
-
-	// Change the note to a controlled one and connect it to the voice module.
-	suite.ChainA.Note = Instantiate(t, suite.ChainA.Chain, 1, NoteInstantiate{
-		Controller:  accountController.Address.String(),
-		BlockMaxGas: 2 * wasmapp.DefaultGas,
-	})
-	path = suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
-
-	controller := QueryController(suite.ChainA.Chain, suite.ChainA.Note)
-	require.Equal(t, `"`+accountController.Address.String()+`"`, controller)
-
-	hello := HelloMessage(suite.ChainB.Tester, testBinary)
-
-	callback, err := suite.RoundtripExecuteControlled(t, path, &accountController, accountA.Address.String(), hello)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Empty(t, callback.Err, "callback should not error")
-	require.NotEmpty(t, callback.Ok, "data should not be empty")
-
-	// Should err as accountB is not the controller
-	accountB := GenAccount(t, &suite.ChainA)
-	_, err = suite.RoundtripExecuteControlled(t, path, &accountB, accountController.Address.String(), hello)
-	require.Contains(t, err.Error(), "Note is controlled, but this address is not the controller")
-	// bug in ibctesting where error means you need to manually increment account sequence.
-	accountB.Acc.SetSequence(accountB.Acc.GetSequence() + 1)
-
-	// Should err as we don't set on_behalf_of (empty string)
-	_, err = suite.RoundtripExecuteControlled(t, path, &accountController, "", hello)
-	require.Contains(t, err.Error(), "Note is controlled, but 'on_behalf_of' is not set")
-	// bug in ibctesting where error means you need to manually increment account sequence.
-	accountController.Acc.SetSequence(accountController.Acc.GetSequence() + 1)
-
-	// Test that queries work if a controller is present.
-	testerQuery := TesterQuery{
-		History: &Empty{},
-	}
-	queryBytes, err := json.Marshal(testerQuery)
-	if err != nil {
-		t.Fatal(err)
-	}
-	query := w.QueryRequest{
-		Wasm: &w.WasmQuery{
-			Smart: &w.SmartQuery{
-				ContractAddr: suite.ChainB.Tester.String(),
-				Msg:          queryBytes,
-			},
-		},
-	}
-
-	queryCallback, err := suite.RoundtripQuery(t, path, &accountController, query)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(t, CallbackDataQuery{
-		Ok: [][]byte{
-			[]byte(`{"history":[]}`),
-		},
-	}, queryCallback, "queries work when the controller sends them")
-
-	_, err = suite.RoundtripQuery(t, path, &accountB, query)
-	require.ErrorContains(
-		t,
-		err,
-		"Note is controlled, but this address is not the controller",
-		"only the controller may execute queries",
-	)
 }

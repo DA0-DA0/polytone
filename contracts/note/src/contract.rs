@@ -10,7 +10,7 @@ use polytone::{callback, ibc};
 use crate::error::ContractError;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Pair, QueryMsg};
-use crate::state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT, CONTROLLER};
+use crate::state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-note";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -41,11 +41,6 @@ pub fn instantiate(
         CONNECTION_REMOTE_PORT.save(deps.storage, &(connection_id, remote_port))?;
     };
 
-    if let Some(controller) = msg.controller {
-        response = response.add_attribute("controller", controller.to_string());
-        CONTROLLER.save(deps.storage, &deps.api.addr_validate(&controller)?)?;
-    }
-
     Ok(response)
 }
 
@@ -56,18 +51,16 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let (msg, callback, timeout_seconds, request_type, on_behalf_of) = match msg {
+    let (msg, callback, timeout_seconds, request_type) = match msg {
         ExecuteMsg::Execute {
             msgs,
             callback,
             timeout_seconds,
-            on_behalf_of,
         } => (
             ibc::Msg::Execute { msgs },
             callback,
             timeout_seconds,
             CallbackRequestType::Execute,
-            on_behalf_of,
         ),
         ExecuteMsg::Query {
             msgs,
@@ -78,37 +71,13 @@ pub fn execute(
             Some(callback),
             timeout_seconds,
             CallbackRequestType::Query,
-            None,
         ),
-    };
-
-    let sender = match CONTROLLER.may_load(deps.storage)? {
-        Some(controller) => {
-            if controller != info.sender {
-                return Err(ContractError::NotController);
-            }
-
-            if request_type == CallbackRequestType::Query {
-                info.sender
-            } else if let Some(sender) = on_behalf_of {
-                deps.api.addr_validate(&sender)?
-            } else {
-                return Err(ContractError::OnBehalfOfNotSet);
-            }
-        }
-        None => {
-            if on_behalf_of.is_some() {
-                return Err(ContractError::NotControlledButOnBehalfIsSet);
-            } else {
-                info.sender
-            }
-        }
     };
 
     callback::request_callback(
         deps.storage,
         deps.api,
-        sender.clone(),
+        info.sender.clone(),
         callback,
         request_type,
     )?;
@@ -122,7 +91,7 @@ pub fn execute(
         .add_message(IbcMsg::SendPacket {
             channel_id,
             data: to_binary(&ibc::Packet {
-                sender: sender.into_string(),
+                sender: info.sender.into_string(),
                 msg,
             })
             .expect("msgs are known to be serializable"),
@@ -140,7 +109,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 remote_port,
             },
         )),
-        QueryMsg::Controller => to_binary(&CONTROLLER.may_load(deps.storage)?),
         QueryMsg::RemoteAddress { local_address } => to_binary(
             &callback::LOCAL_TO_REMOTE_ACCOUNT
                 .may_load(deps.storage, &deps.api.addr_validate(&local_address)?)?,
