@@ -12,27 +12,6 @@ pub struct InstantiateMsg {
     /// ever be one voice for every note.
     pub pair: Option<Pair>,
 
-    /// This is the controller of the note. If a controller is set:
-    ///
-    /// 1. Only the controller may execute messages.
-    /// 2. The controller mat execute messages on behalf of any
-    ///    address.
-    ///
-    /// The controller allows sequencing of IBC-transfers and actions
-    /// on the counterparty chain. For example, the controller of a
-    /// note could:
-    ///
-    /// 1. Receive tokens from initiator.
-    /// 2. Transfer tokens to initators remote account.
-    /// 3. Perform an action on the initiator's behalf on the remote
-    ///    chain.
-    ///
-    /// For more discussion of the controller, see "How Polytone
-    /// Supports Outposts":
-    ///
-    /// <https://github.com/DA0-DA0/polytone/wiki/How-Polytone-Supports-Outposts>
-    pub controller: Option<String>,
-
     /// The max gas allowed in a transaction. When returning callbacks
     /// the module will use this to calculate the amount of gas to
     /// save for handling a callback error. This protects from
@@ -58,14 +37,16 @@ pub enum ExecuteMsg {
     /// their callbacks by calling `set_data` on their `Response`
     /// object. Optionaly, returns a callback of `Vec<Callback>` where
     /// index `i` corresponds to the callback for `msgs[i]`.
+    ///
+    /// Accounts are created on the voice chain after the first call
+    /// to execute by the local address. To create an account, but
+    /// perform no additional actions, pass an empty list to
+    /// `msgs`. Accounts are queryable via the `RemoteAddress {
+    /// local_address }` query after they have been created.
     Execute {
         msgs: Vec<CosmosMsg<Empty>>,
         callback: Option<CallbackRequest>,
         timeout_seconds: Uint64,
-
-        /// Must be `None` if no controller is set, or `Some(address)`
-        /// if a controller is set.
-        on_behalf_of: Option<String>,
     },
 }
 
@@ -79,9 +60,6 @@ pub enum QueryMsg {
     /// The contract's corresponding voice on a remote chain.
     #[returns(Option<Pair>)]
     Pair,
-    /// This note's controller, or None.
-    #[returns(Option<String>)]
-    Controller,
     /// Returns the remote address for the provided local address. If
     /// no account exists, returns `None`. An account can be created
     /// by calling `ExecuteMsg::Execute` with the sender being

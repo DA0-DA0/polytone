@@ -1,4 +1,4 @@
-use cosmwasm_std::{Uint64, Addr};
+use cosmwasm_std::{Addr, Uint64};
 
 use crate::suite_tests::suite::CREATOR_ADDR;
 
@@ -15,12 +15,9 @@ fn test_update() {
 
     let proxy_code_new = suite.store_voice_contract();
 
-    suite.update(
-        Addr::unchecked(CREATOR_ADDR),
-        proxy_code_new,
-        50,
-    )
-    .unwrap();
+    suite
+        .update(Addr::unchecked(CREATOR_ADDR), proxy_code_new, 50)
+        .unwrap();
 
     // assert that both fields updated succesfully
     suite.assert_block_max_gas(50);
@@ -29,34 +26,24 @@ fn test_update() {
 
 #[test]
 fn test_query_block_max_gas() {
-    let mut suite = SuiteBuilder::default()
-        .build();
+    let mut suite = SuiteBuilder::default().build();
 
     suite.assert_block_max_gas(0);
 
-    suite.update(
-        Addr::unchecked(CREATOR_ADDR),
-        suite.voice_code,
-        50,
-    )
-    .unwrap();
+    suite
+        .update(Addr::unchecked(CREATOR_ADDR), suite.voice_code, 50)
+        .unwrap();
 
     suite.assert_block_max_gas(50);
 }
 
 #[test]
 fn test_query_proxy_code_id() {
-    let mut suite = SuiteBuilder::default()
-        .build();
-    
+    let mut suite = SuiteBuilder::default().build();
+
     suite.assert_proxy_code(0);
 
-    suite.update(
-        Addr::unchecked(CREATOR_ADDR),
-        1,
-        0,
-    )
-    .unwrap();
+    suite.update(Addr::unchecked(CREATOR_ADDR), 1, 0).unwrap();
 
     suite.assert_proxy_code(1);
 }

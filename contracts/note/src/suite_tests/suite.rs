@@ -33,7 +33,6 @@ impl Default for SuiteBuilder {
             instantiate: InstantiateMsg {
                 block_max_gas: Uint64::zero(),
                 pair: None,
-                controller: None,
             },
         }
     }

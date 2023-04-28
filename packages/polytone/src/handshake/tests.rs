@@ -81,9 +81,7 @@ impl MockHandshake {
         channel.connection_id = connection_end;
 
         (self.confirm)(
-            &IbcChannelConnectMsg::OpenConfirm {
-                channel,
-            },
+            &IbcChannelConnectMsg::OpenConfirm { channel },
             end_extensions,
         )?;
 
