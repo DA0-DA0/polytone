@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty, QueryRequest, Uint64};
 
-use polytone::callback::CallbackRequest;
+use polytone::callbacks::CallbackRequest;
 
 #[cw_serde]
 pub struct InstantiateMsg {

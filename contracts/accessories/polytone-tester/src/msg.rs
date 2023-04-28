@@ -9,7 +9,7 @@ pub enum ExecuteMsg {
     /// Calls `set_data(data)` if `data` is not None.
     Hello { data: Option<Binary> },
     /// Stores the callback in state and makes it queryable
-    Callback(polytone::callback::CallbackMessage),
+    Callback(polytone::callbacks::CallbackMessage),
     /// Runs out of gas.
     RunOutOfGas {},
 }
@@ -28,7 +28,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct CallbackHistoryResponse {
-    pub history: Vec<polytone::callback::CallbackMessage>,
+    pub history: Vec<polytone::callbacks::CallbackMessage>,
 }
 
 #[cw_serde]

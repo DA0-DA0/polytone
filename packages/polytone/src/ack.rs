@@ -1,7 +1,7 @@
 use cosmwasm_std::{from_binary, to_binary, Binary, IbcAcknowledgement, SubMsgResponse, Uint64};
 
-pub use crate::callback::Callback;
-use crate::callback::{ErrorResponse, ExecutionResponse};
+pub use crate::callbacks::Callback;
+use crate::callbacks::{ErrorResponse, ExecutionResponse};
 
 /// wasmd 0.32+ will not return a hardcoded ICS-20 ACK if
 /// ibc_packet_receive errors [1] so we can safely use an ACK format

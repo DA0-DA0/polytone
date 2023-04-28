@@ -4,14 +4,14 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use polytone::callback::CallbackRequestType;
-use polytone::{callback, ibc};
+use polytone::callbacks::CallbackRequestType;
+use polytone::{accounts, callbacks, ibc};
 
 use crate::error::ContractError;
 
 use crate::ibc::ERR_GAS_NEEDED;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Pair, QueryMsg};
-use crate::state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT};
+use crate::state::{increment_sequence_number, BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-note";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -79,17 +79,28 @@ pub fn execute(
         ),
     };
 
-    callback::request_callback(
+    let channel_id = CHANNEL
+        .may_load(deps.storage)?
+        .ok_or(ContractError::NoPair)?;
+
+    let sequence_number = increment_sequence_number(deps.storage, channel_id.clone())?;
+
+    callbacks::request_callback(
         deps.storage,
         deps.api,
+        channel_id.clone(),
+        sequence_number,
         info.sender.clone(),
         callback,
         request_type,
     )?;
 
-    let channel_id = CHANNEL
-        .may_load(deps.storage)?
-        .ok_or(ContractError::NoPair)?;
+    accounts::on_send_packet(
+        deps.storage,
+        channel_id.clone(),
+        sequence_number,
+        &info.sender,
+    )?;
 
     Ok(Response::default()
         .add_attribute("method", "execute")
@@ -114,10 +125,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 remote_port,
             },
         )),
-        QueryMsg::RemoteAddress { local_address } => to_binary(
-            &callback::LOCAL_TO_REMOTE_ACCOUNT
-                .may_load(deps.storage, &deps.api.addr_validate(&local_address)?)?,
-        ),
+        QueryMsg::RemoteAddress { local_address } => to_binary(&accounts::query_account(
+            deps.storage,
+            deps.api.addr_validate(&local_address)?,
+        )?),
         QueryMsg::BlockMaxGas => to_binary(&BLOCK_MAX_GAS.load(deps.storage)?),
     }
 }
