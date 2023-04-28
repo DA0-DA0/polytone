@@ -1,7 +1,8 @@
 [workspace]
 members = [
   "packages/*",
-  "contracts/*",
+  "contracts/accessories/*",
+  "contracts/main/*",
 ]
 
 [workspace.package]
@@ -23,9 +24,9 @@ rpath            = false
 
 [workspace.dependencies]
 polytone       = { path = "packages/polytone" }
-polytone-proxy = { path = "contracts/proxy" }
-polytone-note  = { path = "contracts/note" }
-polytone-voice = { path = "contracts/voice" }
+polytone-proxy = { path = "contracts/main/proxy" }
+polytone-note  = { path = "contracts/main/note" }
+polytone-voice = { path = "contracts/main/voice" }
 
 cosmwasm-schema = "1.2.1"
 cosmwasm-std    = { version = "1.2.4", features = ["ibc3"] }

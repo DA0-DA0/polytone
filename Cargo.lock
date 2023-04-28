@@ -520,6 +520,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "polytone-tester"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw2",
+ "polytone",
+ "thiserror",
+]
+
+[[package]]
 name = "polytone-voice"
 version = "0.1.0"
 dependencies = [
