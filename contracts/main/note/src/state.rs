@@ -1,5 +1,7 @@
-use cosmwasm_std::{StdResult, Storage};
+use cosmwasm_std::Storage;
 use cw_storage_plus::{Item, Map};
+
+use crate::error::ContractError;
 
 /// (Connection-ID, Remote port) of this contract's pair.
 pub const CONNECTION_REMOTE_PORT: Item<(String, String)> = Item::new("a");
@@ -21,11 +23,12 @@ const SEQUENCE_NUMBER: Map<String, u64> = Map::new("sn");
 pub(crate) fn increment_sequence_number(
     storage: &mut dyn Storage,
     channel_id: String,
-) -> StdResult<u64> {
+) -> Result<u64, ContractError> {
     let seq = SEQUENCE_NUMBER
         .may_load(storage, channel_id.clone())?
         .unwrap_or_default()
-        + 1;
+        .checked_add(1)
+        .ok_or(ContractError::SequenceOverflow)?;
     SEQUENCE_NUMBER.save(storage, channel_id, &seq)?;
     Ok(seq)
 }
