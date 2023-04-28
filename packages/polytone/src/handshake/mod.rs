@@ -9,13 +9,13 @@ pub const POLYTONE_VERSION: &str = "polytone-1";
 /// The version returned by the note module during the first step of
 /// the handshake.
 pub fn note_version() -> String {
-    format!("{}-note", POLYTONE_VERSION)
+    format!("{POLYTONE_VERSION}-note")
 }
 
 /// The version returned by the voice module during the first step of
 /// the handshake.
 pub fn voice_version() -> String {
-    format!("{}-voice", POLYTONE_VERSION)
+    format!("{POLYTONE_VERSION}-voice")
 }
 
 /// Performs the open step of the IBC handshake for Polytone modules.
