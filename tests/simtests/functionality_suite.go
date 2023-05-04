@@ -209,6 +209,22 @@ func (c *Chain) MintBondedDenom(t *testing.T, to sdk.AccAddress) {
 	require.NoError(t, err)
 }
 
+func (c *Chain) CloseNoteChannel(t *testing.T, path *ibctesting.Path) (*sdk.Result, error) {
+	// Contracts are instantiated by the chain default sender and
+	// the note has code ID 1 in SetupChain.
+	a := genAccount(t, c.Chain.SenderPrivKey, c)
+	msg := a.WasmMigrate(&c.Note, `close_channel`, 1)
+	res, err := a.Send(t, msg)
+	if err != nil {
+		return res, err
+	}
+	err = path.EndpointA.Chain.Coordinator.RelayAndAckPendingPackets(path)
+	if err != nil {
+		return res, errors.Join(errors.New("error closing channel"), err)
+	}
+	return res, err
+}
+
 func (s *Suite) RoundtripExecute(t *testing.T, path *ibctesting.Path, account *Account, msgs ...w.CosmosMsg) (CallbackDataExecute, error) {
 	if msgs == nil {
 		msgs = []w.CosmosMsg{}
