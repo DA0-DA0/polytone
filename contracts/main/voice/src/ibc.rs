@@ -30,7 +30,7 @@ pub(crate) const REPLY_FORWARD_DATA: u64 = 1;
 /// to tune this. Note that it is best to give this a lot of headroom
 /// as gas usage is non-deterministic in the SDK and a limit tuned
 /// within 50 gas is liable to fail non-deterministically.
-const ACK_GAS_NEEDED: u64 = 101_000;
+pub(crate) const ACK_GAS_NEEDED: u64 = 101_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(

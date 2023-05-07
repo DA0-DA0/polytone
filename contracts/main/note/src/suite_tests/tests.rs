@@ -7,10 +7,10 @@ use super::suite::{SuiteBuilder, CREATOR_ADDR};
 #[test]
 fn test_instantiate_no_pair() {
     let suite = SuiteBuilder::default()
-        .with_block_max_gas(Uint64::new(10))
+        .with_block_max_gas(Uint64::new(111_000))
         .build();
 
-    suite.assert_block_max_gas(10);
+    suite.assert_block_max_gas(111_000);
     suite.assert_pair(None);
 }
 
@@ -22,10 +22,10 @@ fn test_instantiate_with_pair() {
     };
     let suite = SuiteBuilder::default()
         .with_pair(pair.clone())
-        .with_block_max_gas(Uint64::new(10))
+        .with_block_max_gas(Uint64::new(111_000))
         .build();
 
-    suite.assert_block_max_gas(10);
+    suite.assert_block_max_gas(111_000);
     suite.assert_pair(Some(pair));
 }
 
@@ -33,18 +33,20 @@ fn test_instantiate_with_pair() {
 fn test_update() {
     let mut suite = SuiteBuilder::default().build();
 
-    suite.assert_block_max_gas(0);
+    suite.assert_block_max_gas(110_000);
 
-    suite.update(Addr::unchecked(CREATOR_ADDR), 10).unwrap();
+    suite
+        .update(Addr::unchecked(CREATOR_ADDR), 111_000)
+        .unwrap();
 
-    suite.assert_block_max_gas(10);
+    suite.assert_block_max_gas(111_000);
 }
 
 #[test]
 fn test_query_block_max_gas() {
     let suite = SuiteBuilder::default()
-        .with_block_max_gas(Uint64::new(20))
+        .with_block_max_gas(Uint64::new(111_000))
         .build();
 
-    suite.assert_block_max_gas(20);
+    suite.assert_block_max_gas(111_000);
 }

@@ -18,4 +18,10 @@ pub enum ContractError {
 
     #[error("only the contract itself may call this method")]
     NotSelf,
+
+    #[error("Proxy code id can't be zero")]
+    CodeIdCantBeZero,
+
+    #[error("ACK_GAS_NEEDED can't be higher then BLOCK_MAX_GAS")]
+    GasLimitsMismatch,
 }

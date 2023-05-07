@@ -31,8 +31,8 @@ impl Default for SuiteBuilder {
     fn default() -> Self {
         Self {
             instantiate: InstantiateMsg {
-                proxy_code_id: Uint64::zero(),
-                block_max_gas: Uint64::zero(),
+                proxy_code_id: Uint64::new(9999),
+                block_max_gas: Uint64::new(110_000),
             },
         }
     }
@@ -97,14 +97,14 @@ impl Suite {
     pub fn update(
         &mut self,
         sender: Addr,
-        contract_id: u64,
+        contract_code_id: u64,
         block_max_gas: u64,
     ) -> anyhow::Result<AppResponse> {
         self.app.migrate_contract(
             sender,
             self.voice_address.clone(),
             &MigrateMsg::WithUpdate {
-                proxy_code_id: contract_id.into(),
+                proxy_code_id: contract_code_id.into(),
                 block_max_gas: block_max_gas.into(),
             },
             self.voice_code,

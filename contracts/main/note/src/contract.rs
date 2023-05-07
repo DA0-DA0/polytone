@@ -9,6 +9,7 @@ use polytone::{callback, ibc};
 
 use crate::error::ContractError;
 
+use crate::ibc::ERR_GAS_NEEDED;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Pair, QueryMsg};
 use crate::state::{BLOCK_MAX_GAS, CHANNEL, CONNECTION_REMOTE_PORT};
 
@@ -23,6 +24,10 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    if msg.block_max_gas.u64() <= ERR_GAS_NEEDED {
+        return Err(ContractError::GasLimitsMismatch);
+    }
 
     BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
 
@@ -121,6 +126,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
         MigrateMsg::WithUpdate { block_max_gas } => {
+            if block_max_gas.u64() <= ERR_GAS_NEEDED {
+                return Err(ContractError::GasLimitsMismatch);
+            }
+
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
             Ok(Response::default().add_attribute("method", "migrate_with_update"))
         }

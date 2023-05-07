@@ -15,7 +15,7 @@ use crate::{
 /// The amount of gas that needs to be reserved for handling a
 /// callback error in the reply method. See `TestNoteOutOfGas` in the
 /// simulation tests for a test that can be used to tune thise.
-const ERR_GAS_NEEDED: u64 = 101_000;
+pub(crate) const ERR_GAS_NEEDED: u64 = 101_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc_channel_open(
