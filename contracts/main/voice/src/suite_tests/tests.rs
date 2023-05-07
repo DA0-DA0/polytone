@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Uint64};
 
-use crate::suite_tests::suite::CREATOR_ADDR;
+use crate::{error::ContractError, suite_tests::suite::CREATOR_ADDR};
 
 use super::suite::SuiteBuilder;
 
@@ -48,4 +48,41 @@ fn test_query_proxy_code_id() {
         .unwrap();
 
     suite.assert_proxy_code(1);
+}
+
+#[test]
+#[should_panic]
+fn test_code_id_validation() {
+    SuiteBuilder::default()
+        .with_proxy_code_id(Uint64::new(0))
+        .build();
+}
+
+#[test]
+#[should_panic]
+fn test_gas_validation() {
+    SuiteBuilder::default()
+        .with_block_max_gas(Uint64::new(0))
+        .build();
+}
+
+#[test]
+fn test_migrate_validation() {
+    let mut suite = SuiteBuilder::default().build();
+
+    let err = suite
+        .update(Addr::unchecked(CREATOR_ADDR), 0, 110_000)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(err, ContractError::CodeIdCantBeZero);
+
+    let err = suite
+        .update(Addr::unchecked(CREATOR_ADDR), 1, 0)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(err, ContractError::GasLimitsMismatch);
 }
