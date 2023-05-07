@@ -3,7 +3,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum HandshakeError {
     #[error("protocol missmatch, got {actual}, expected {expected}")]
-    ProtocolMissmatch { actual: String, expected: String },
+    ProtocolMismatch { actual: String, expected: String },
     #[error("channel must be unordered")]
     UnUnordered,
     #[error("only a note and voice may connect")]

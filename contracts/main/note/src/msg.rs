@@ -35,7 +35,7 @@ pub enum ExecuteMsg {
     /// Executes the requested messages on the voice chain on behalf
     /// of the note chain sender. Message receivers can return data in
     /// their callbacks by calling `set_data` on their `Response`
-    /// object. Optionaly, returns a callback of `Vec<Callback>` where
+    /// object. Optionally, returns a callback of `Vec<Callback>` where
     /// index `i` corresponds to the callback for `msgs[i]`.
     ///
     /// Accounts are created on the voice chain after the first call

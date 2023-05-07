@@ -126,7 +126,7 @@ fn test_wrong_init_version() {
         .unwrap_err();
     assert_eq!(
         err,
-        HandshakeError::ProtocolMissmatch {
+        HandshakeError::ProtocolMismatch {
             actual: "ics721-1".to_string(),
             expected: POLYTONE_VERSION.to_string()
         }

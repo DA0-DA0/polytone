@@ -24,7 +24,7 @@ pub fn ack_query_fail(message_index: Uint64, error: String) -> Binary {
     .unwrap()
 }
 
-/// Serializes an ACK-SUCCESS for execution that succeded.
+/// Serializes an ACK-SUCCESS for execution that succeeded.
 pub fn ack_execute_success(result: Vec<SubMsgResponse>, executed_by: String) -> Binary {
     to_binary(&Callback::Execute(Ok(ExecutionResponse {
         result,
@@ -49,7 +49,7 @@ pub fn ack_fail(err: String) -> Binary {
 pub fn unmarshal_ack(ack: &IbcAcknowledgement) -> Ack {
     from_binary(&ack.data).unwrap_or_else(|e| {
         Callback::FatalError(format!(
-            "error unmarshaling ack ({}): {}",
+            "error unmarshalling ack ({}): {}",
             ack.data.to_base64(),
             e
         ))

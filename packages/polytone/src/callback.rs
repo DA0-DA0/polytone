@@ -190,7 +190,7 @@ struct PendingCallback {
     request_type: CallbackRequestType,
 }
 
-/// Disembiguates between a callback for remote message execution and
+/// Disambiguates between a callback for remote message execution and
 /// queries.
 #[cw_serde]
 pub enum CallbackRequestType {

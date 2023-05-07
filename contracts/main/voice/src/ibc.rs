@@ -29,7 +29,7 @@ pub(crate) const REPLY_FORWARD_DATA: u64 = 1;
 /// Use `TestVoiceOutOfGas` in `tests/simtests/functionality_test.go`
 /// to tune this. Note that it is best to give this a lot of headroom
 /// as gas usage is non-deterministic in the SDK and a limit tuned
-/// within 50 gas is liable to fail non-dererministicly.
+/// within 50 gas is liable to fail non-deterministically.
 const ACK_GAS_NEEDED: u64 = 101_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -122,18 +122,18 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 .set_data(ack_fail(e)),
             SubMsgResult::Ok(_) => {
                 let data = parse_reply_execute_data(msg.clone())
-                    .expect("execution succeded")
+                    .expect("execution succeeded")
                     .data
                     .expect("reply_forward_data sets data");
                 match from_binary::<Callback>(&data) {
                     Ok(_) => Response::default().set_data(data),
                     Err(e) => Response::default()
-                        .set_data(ack_fail(format!("unmarshaling callback data: ({e})"))),
+                        .set_data(ack_fail(format!("unmarshalling callback data: ({e})"))),
                 }
             }
         }),
         REPLY_FORWARD_DATA => match msg.result {
-            // Executing the requested messages succeded. Because more
+            // Executing the requested messages succeeded. Because more
             // than one message can be dispatched (instantiate proxy &
             // execute proxy), CosmWasm will not automatically
             // percolate the data up so we do so ourselves. Because we
