@@ -67,6 +67,11 @@ impl SuiteBuilder {
         self.instantiate.block_max_gas = limit;
         self
     }
+
+    pub fn with_proxy_code_id(mut self, code_id: Uint64) -> Self {
+      self.instantiate.proxy_code_id = code_id;
+      self
+  }
 }
 
 impl Suite {

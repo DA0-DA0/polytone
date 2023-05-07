@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Uint64};
 
-use crate::msg::Pair;
+use crate::{msg::Pair, error::ContractError};
 
 use super::suite::{SuiteBuilder, CREATOR_ADDR};
 
@@ -49,4 +49,25 @@ fn test_query_block_max_gas() {
         .build();
 
     suite.assert_block_max_gas(111_000);
+}
+
+#[test]
+#[should_panic]
+fn test_gas_validation() {
+    SuiteBuilder::default()
+        .with_block_max_gas(Uint64::new(0))
+        .build();
+}
+
+#[test]
+fn test_migrate_validation() {
+    let mut suite = SuiteBuilder::default().build();
+
+    let err = suite
+        .update(Addr::unchecked(CREATOR_ADDR), 0)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(err, ContractError::GasLimitsMismatch);
 }
