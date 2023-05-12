@@ -3,7 +3,7 @@ use cosmwasm_std::{
     to_binary, Addr, Api, Binary, CosmosMsg, IbcPacketAckMsg, IbcPacketTimeoutMsg, StdResult,
     Storage, SubMsgResponse, Uint64, WasmMsg,
 };
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 
 use crate::ack::unmarshal_ack;
 
@@ -82,28 +82,32 @@ pub struct CallbackRequest {
     pub msg: Binary,
 }
 
-//// Must be called every time a packet is sent to keep sequence
-//// number tracking accurate.
-///
-/// Requests that a callback be returned for the next IBC message that
-/// is sent.
+/// Disembiguates between a callback for remote message execution and
+/// queries.
+#[cw_serde]
+pub enum CallbackRequestType {
+    Execute,
+    Query,
+}
+
+/// Requests that a callback be returned for the IBC message
+/// identified by `(channel_id, sequence_number)`.
 pub fn request_callback(
     storage: &mut dyn Storage,
     api: &dyn Api,
+    channel_id: String,
+    sequence_number: u64,
     initiator: Addr,
     request: Option<CallbackRequest>,
     request_type: CallbackRequestType,
 ) -> StdResult<()> {
-    let seq = SEQ.may_load(storage)?.unwrap_or_default() + 1;
-    SEQ.save(storage, &seq)?;
-
     if let Some(request) = request {
         let receiver = api.addr_validate(&request.receiver)?;
         let initiator_msg = request.msg;
 
         CALLBACKS.save(
             storage,
-            seq,
+            (channel_id, sequence_number),
             &PendingCallback {
                 initiator,
                 initiator_msg,
@@ -116,7 +120,56 @@ pub fn request_callback(
     Ok(())
 }
 
-fn callback_msg(request: PendingCallback, result: Callback) -> CosmosMsg {
+/// Call on every packet ACK. Returns a callback message to execute,
+/// if any, and the address that executed the request on the remote
+/// chain (the message initiator's remote account), if any.
+///
+/// (storage, ack) -> (callback, executed_by)
+pub fn on_ack(
+    storage: &mut dyn Storage,
+    IbcPacketAckMsg {
+        acknowledgement,
+        original_packet,
+        ..
+    }: &IbcPacketAckMsg,
+) -> (Option<CosmosMsg>, Option<String>) {
+    let result = unmarshal_ack(acknowledgement);
+
+    let executed_by = match result {
+        Callback::Execute(Ok(ExecutionResponse {
+            ref executed_by, ..
+        })) => Some(executed_by.clone()),
+        _ => None,
+    };
+    let callback_message = dequeue_callback(
+        storage,
+        original_packet.src.channel_id.clone(),
+        original_packet.sequence,
+    )
+    .map(|request| callback_message(request, result));
+
+    (callback_message, executed_by)
+}
+
+/// Call on every packet timeout. Returns a callback message to execute,
+/// if any.
+pub fn on_timeout(
+    storage: &mut dyn Storage,
+    IbcPacketTimeoutMsg { packet, .. }: &IbcPacketTimeoutMsg,
+) -> Option<CosmosMsg> {
+    let request = dequeue_callback(storage, packet.src.channel_id.clone(), packet.sequence)?;
+    let timeout = "timeout".to_string();
+    let result = match request.request_type {
+        CallbackRequestType::Execute => Callback::Execute(Err(timeout)),
+        CallbackRequestType::Query => Callback::Query(Err(ErrorResponse {
+            message_index: Uint64::zero(),
+            error: timeout,
+        })),
+    };
+    Some(callback_message(request, result))
+}
+
+fn callback_message(request: PendingCallback, result: Callback) -> CosmosMsg {
     /// Gives the executed message a "callback" tag:
     /// `{ "callback": CallbackMsg }`.
     #[cw_serde]
@@ -136,48 +189,16 @@ fn callback_msg(request: PendingCallback, result: Callback) -> CosmosMsg {
     .into()
 }
 
-/// Call on every packet ACK. Returns a callback message to execute,
-/// if any.
-pub fn on_ack(
+fn dequeue_callback(
     storage: &mut dyn Storage,
-    IbcPacketAckMsg {
-        acknowledgement,
-        original_packet,
-        ..
-    }: &IbcPacketAckMsg,
-) -> Option<CosmosMsg> {
-    let Some(request) = CALLBACKS.may_load(storage, original_packet.sequence).unwrap() else {
-	return None
-    };
-    CALLBACKS.remove(storage, original_packet.sequence);
-    let result = unmarshal_ack(acknowledgement);
-    if let Callback::Execute(Ok(ExecutionResponse { executed_by, .. })) = &result {
-        LOCAL_TO_REMOTE_ACCOUNT
-            .save(storage, &request.initiator, executed_by)
-            .expect("strings can be serialized");
-    }
-    Some(callback_msg(request, result))
-}
-
-/// Call on every packet timeout. Returns a callback message to execute,
-/// if any.
-pub fn on_timeout(
-    storage: &mut dyn Storage,
-    IbcPacketTimeoutMsg { packet, .. }: &IbcPacketTimeoutMsg,
-) -> Option<CosmosMsg> {
-    let Some(request) = CALLBACKS.may_load(storage, packet.sequence).unwrap() else {
-	return None
-    };
-    CALLBACKS.remove(storage, packet.sequence);
-    let timeout = "timeout".to_string();
-    let result = match request.request_type {
-        CallbackRequestType::Execute => Callback::Execute(Err(timeout)),
-        CallbackRequestType::Query => Callback::Query(Err(ErrorResponse {
-            message_index: Uint64::zero(),
-            error: timeout,
-        })),
-    };
-    Some(callback_msg(request, result))
+    channel_id: String,
+    sequence_number: u64,
+) -> Option<PendingCallback> {
+    let request = CALLBACKS
+        .may_load(storage, (channel_id.clone(), sequence_number))
+        .unwrap()?;
+    CALLBACKS.remove(storage, (channel_id, sequence_number));
+    Some(request)
 }
 
 #[cw_serde]
@@ -190,17 +211,5 @@ struct PendingCallback {
     request_type: CallbackRequestType,
 }
 
-/// Disambiguates between a callback for remote message execution and
-/// queries.
-#[cw_serde]
-pub enum CallbackRequestType {
-    Execute,
-    Query,
-}
-
-/// (local_account) -> remote_account
-pub const LOCAL_TO_REMOTE_ACCOUNT: Map<&Addr, String> = Map::new("polytone-l2r");
-/// (sequence_number) -> callback
-const CALLBACKS: Map<u64, PendingCallback> = Map::new("polytone-callbacks");
-/// The number of packets sent so far.
-const SEQ: Item<u64> = Item::new("polytone-ibc-seq");
+/// (channel_id, sequence_number) -> callback
+const CALLBACKS: Map<(String, u64), PendingCallback> = Map::new("polytone-callbacks");

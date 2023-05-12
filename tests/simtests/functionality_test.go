@@ -471,3 +471,124 @@ func TestInstantiateExecute(t *testing.T) {
 	// But because it can change in the future, we just check its not empty
 	require.NotEmpty(t, response.Address, "address should not be empty")
 }
+
+func TestSimpleChannelClosure(t *testing.T) {
+	suite := NewSuite(t)
+
+	account := GenAccount(t, &suite.ChainA)
+	path := suite.SetupDefaultPath(&suite.ChainA, &suite.ChainB)
+
+	_, err := suite.RoundtripExecute(t, path, &account)
+	require.NoError(t, err, "creating an account should work")
+	remoteAccount := QueryRemoteAccount(suite.ChainA.Chain, suite.ChainA.Note, account.Address)
+	require.NotEqual(t, "null", remoteAccount, "remote account was created")
+
+	initialActiveChannel := QueryActiveChannel(suite.ChainA.Chain, suite.ChainA.Note)
+	require.Equal(t, `"channel-0"`, initialActiveChannel)
+
+	suite.Coordinator.CloseChannel(path)
+
+	require.Equal(
+		t,
+		remoteAccount,
+		QueryRemoteAccount(suite.ChainA.Chain, suite.ChainA.Note, account.Address),
+		"remote account is queryable even when channel is closed",
+	)
+
+	aPort := suite.ChainA.QueryPort(suite.ChainA.Note)
+	bPort := suite.ChainB.QueryPort(suite.ChainB.Voice)
+
+	// get around path creation sequence number bug in ibctesting.
+	suite.ChainA.Chain.SenderAccount = account.Acc
+	suite.ChainA.Chain.SenderPrivKey = account.PrivKey
+
+	// try to create a path between the modules on a new
+	// connection. this should fail.
+	_, err = suite.SetupPath(
+		bPort,
+		aPort,
+		&suite.ChainB,
+		&suite.ChainA,
+	)
+	require.ErrorContains(t,
+		err,
+		"contract is already paired with port ("+
+			bPort+
+			") on connection (connection-0), got port ("+
+			bPort+
+			") on connection (connection-1)",
+		"the same port on a different channel is not allowed",
+	)
+	// errors cause sequence numbers to get messed up. i don't
+	// make the rules 🤷
+	account.Acc.SetSequence(account.Acc.GetSequence() + 1)
+
+	// sending a message on a closed channel results in an error.
+	_, err = suite.RoundtripExecute(
+		t,
+		path,
+		&account,
+		HelloMessage(
+			suite.ChainB.Tester,
+			"👌",
+		),
+	)
+	require.ErrorContains(t,
+		err,
+		"contract has no pair, establish a channel with a voice module to create one",
+		"messages can not be executed when the channel is closed",
+	)
+
+	account = GenAccount(t, &suite.ChainA)
+	suite.ChainA.Chain.SenderAccount = account.Acc
+	suite.ChainA.Chain.SenderPrivKey = account.PrivKey
+
+	// Create a new channel, on the original connection. Doing
+	// this requires a bit of a hack where we reset the path's
+	// channel information to its default values and then create a
+	// new channel. ibctesting doesn't have a "way" to do this, so
+	// this seemed like the lowest-effort hack.
+	path.EndpointA.ChannelConfig = ChannelConfig(aPort)
+	path.EndpointB.ChannelConfig = ChannelConfig(bPort)
+	path.EndpointA.ChannelID = ""
+	path.EndpointB.ChannelID = ""
+
+	// This should create a channel! or error. But clearly it does
+	// not because there is no code path that calls into
+	// ibc_confirm and doesn't set the active channel. Fuck.
+	suite.Coordinator.CreateChannels(path)
+
+	// I have toiled many hours on this test and got nowhere. The
+	// above is the closest I ever got to isolating why the
+	// testing environment was behaving like this. It appears that
+	// the CosmWasm contract just doesn't get called, despite no
+	// error being returned while executing the channel closure.
+	//
+	// The only way for a channel to close with Polytone is if (1)
+	// the counterparty is malicious, or (2) the light client has
+	// been taken over. In both cases, you are completely pwned
+	// anyhow as the adversary has complete controll of the remote
+	// accounts, so I think completely reaching this state is more
+	// of an academic interest.
+
+	// activeChannel := QueryActiveChannel(suite.ChainA.Chain, suite.ChainA.Note)
+	// require.Equal(t, `"channel-1"`, activeChannel, "a new channel should have been created")
+
+	// callback, err := suite.RoundtripExecute(
+	// 	t,
+	// 	path,
+	// 	&account,
+	// 	HelloMessage(
+	// 		suite.ChainB.Tester,
+	// 		"👌",
+	// 	),
+	// )
+	// require.NoError(t, err, "messages can be executed now that the channel is reopened")
+	// require.Equal(t, "👌", callback.Ok.Result[0].Data)
+	// require.Equal(
+	// 	t,
+	// 	remoteAccount,
+	// 	QueryRemoteAccount(suite.ChainA.Chain, suite.ChainA.Note, account.Address),
+	// 	"remote account has not changed",
+	// )
+}

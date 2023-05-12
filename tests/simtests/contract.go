@@ -202,3 +202,18 @@ func QueryBlockMaxGas(
 	}
 	return string(query)
 }
+
+func QueryActiveChannel(
+	chain *ibctesting.TestChain,
+	note sdk.AccAddress,
+) string {
+	query, err := chain.App.WasmKeeper.QuerySmart(
+		chain.GetContext(),
+		note,
+		[]byte(NoteQueryActiveChannel),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return string(query)
+}

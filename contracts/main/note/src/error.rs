@@ -22,4 +22,7 @@ pub enum ContractError {
 
     #[error("ERR_GAS_NEEDED can't be higher then BLOCK_MAX_GAS")]
     GasLimitsMismatch,
+
+    #[error("channel sequence number overflow, to fix: the contract admin may migrate to close and reopen the channel")]
+    SequenceOverflow,
 }

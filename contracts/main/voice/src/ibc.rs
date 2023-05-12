@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
 use polytone::{
     ack::{ack_execute_fail, ack_fail},
-    callback::Callback,
+    callbacks::Callback,
     handshake::voice,
 };
 
