@@ -19,4 +19,7 @@ pub enum ContractError {
 
     #[error("contract has no pair, establish a channel with a voice module to create one")]
     NoPair,
+
+    #[error("ERR_GAS_NEEDED can't be higher then BLOCK_MAX_GAS")]
+    GasLimitsMismatch,
 }

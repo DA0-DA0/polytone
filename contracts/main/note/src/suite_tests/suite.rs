@@ -31,7 +31,7 @@ impl Default for SuiteBuilder {
     fn default() -> Self {
         Self {
             instantiate: InstantiateMsg {
-                block_max_gas: Uint64::zero(),
+                block_max_gas: Uint64::new(110_000),
                 pair: None,
             },
         }

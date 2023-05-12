@@ -10,7 +10,7 @@ use polytone::ack::{ack_query_fail, ack_query_success};
 use polytone::ibc::{Msg, Packet};
 
 use crate::error::ContractError;
-use crate::ibc::REPLY_FORWARD_DATA;
+use crate::ibc::{ACK_GAS_NEEDED, REPLY_FORWARD_DATA};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{BLOCK_MAX_GAS, PROXY_CODE_ID, SENDER_TO_PROXY};
 
@@ -25,6 +25,14 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    if msg.proxy_code_id.is_zero() {
+        return Err(ContractError::CodeIdCantBeZero);
+    }
+
+    if msg.block_max_gas.u64() <= ACK_GAS_NEEDED {
+        return Err(ContractError::GasLimitsMismatch);
+    }
 
     PROXY_CODE_ID.save(deps.storage, &msg.proxy_code_id.u64())?;
     BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
@@ -172,6 +180,14 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             proxy_code_id,
             block_max_gas,
         } => {
+            if proxy_code_id.is_zero() {
+                return Err(ContractError::CodeIdCantBeZero);
+            }
+
+            if block_max_gas.u64() <= ACK_GAS_NEEDED {
+                return Err(ContractError::GasLimitsMismatch);
+            }
+
             // update the proxy code ID and block max gas
             PROXY_CODE_ID.save(deps.storage, &proxy_code_id.u64())?;
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;

@@ -39,7 +39,7 @@ fn open(
     match msg {
         IbcChannelOpenMsg::OpenInit { channel } => {
             if channel.version != POLYTONE_VERSION {
-                Err(HandshakeError::ProtocolMissmatch {
+                Err(HandshakeError::ProtocolMismatch {
                     actual: channel.version.clone(),
                     expected: POLYTONE_VERSION.to_string(),
                 })

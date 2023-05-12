@@ -2,7 +2,7 @@ use cosmwasm_std::{Instantiate2AddressError, StdError};
 use cw_utils::ParseReplyError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error(transparent)]
     Std(#[from] StdError),
@@ -18,4 +18,10 @@ pub enum ContractError {
 
     #[error("only the contract itself may call this method")]
     NotSelf,
+
+    #[error("Proxy code id can't be zero")]
+    CodeIdCantBeZero,
+
+    #[error("ACK_GAS_NEEDED can't be higher then BLOCK_MAX_GAS")]
+    GasLimitsMismatch,
 }
