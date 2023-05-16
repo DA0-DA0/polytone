@@ -44,7 +44,7 @@ fn open(
                     expected: POLYTONE_VERSION.to_string(),
                 })
             } else if channel.order != IbcOrder::Unordered {
-                Err(HandshakeError::UnUnordered)
+                Err(HandshakeError::ExpectUnordered)
             } else {
                 Ok(Some(Ibc3ChannelOpenResponse { version }))
             }
@@ -56,7 +56,7 @@ fn open(
             if *cv != counterparty_version {
                 Err(HandshakeError::WrongCounterparty)
             } else if channel.order != IbcOrder::Unordered {
-                Err(HandshakeError::UnUnordered)
+                Err(HandshakeError::ExpectUnordered)
             } else {
                 Ok(Some(Ibc3ChannelOpenResponse {
                     version: to_binary(extensions).unwrap().to_base64(),
