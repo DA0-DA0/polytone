@@ -142,7 +142,9 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             }
 
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
-            Ok(Response::default().add_attribute("method", "migrate_with_update"))
+            Ok(Response::default()
+                .add_attribute("method", "migrate_with_update")
+                .add_attribute("block_max_gas", block_max_gas))
         }
     }
 }

@@ -192,7 +192,10 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             PROXY_CODE_ID.save(deps.storage, &proxy_code_id.u64())?;
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
 
-            Ok(Response::default().add_attribute("method", "migrate_with_update"))
+            Ok(Response::default()
+                .add_attribute("method", "migrate_with_update")
+                .add_attribute("proxy_code_id", proxy_code_id)
+                .add_attribute("block_max_gas", block_max_gas))
         }
     }
 }
