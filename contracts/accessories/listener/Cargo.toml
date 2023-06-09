@@ -1,6 +1,6 @@
 [package]
 name = "polytone-listener"
-authors = ["noah <me@noah.zone>"]
+authors = ["noah <noah@daodao.zone>"]
 edition = { workspace = true }
 license = { workspace = true }
 rust-version = { workspace = true }
