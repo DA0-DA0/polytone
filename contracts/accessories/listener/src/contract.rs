@@ -34,13 +34,13 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    // Only the note can call this contract.
-    if info.sender != NOTE.load(deps.storage)? {
-        return Err(ContractError::Unauthorized {});
-    }
-
     match msg {
         ExecuteMsg::Callback(callback) => {
+            // Only the note can execute the callback on this contract.
+            if info.sender != NOTE.load(deps.storage)? {
+                return Err(ContractError::Unauthorized {});
+            }
+
             RESULTS.save(
                 deps.storage,
                 (

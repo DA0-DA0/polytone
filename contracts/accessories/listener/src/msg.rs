@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use polytone::callback::CallbackMessage;
+use polytone::callbacks::CallbackMessage;
 
 #[cw_serde]
 pub struct InstantiateMsg {

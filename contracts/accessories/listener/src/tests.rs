@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Empty, Uint64};
 
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use polytone::callback::{Callback, CallbackMessage};
+use polytone::callbacks::{Callback, CallbackMessage};
 
 use crate::{
     error::ContractError,
