@@ -43,7 +43,7 @@ fn test() {
             Addr::unchecked(CREATOR_ADDR),
             &polytone_note::msg::InstantiateMsg {
                 pair: None,
-                block_max_gas: Uint64::new(10000),
+                block_max_gas: Uint64::new(110_000),
             },
             &[],
             "note1",
@@ -56,7 +56,7 @@ fn test() {
             Addr::unchecked(CREATOR_ADDR),
             &polytone_note::msg::InstantiateMsg {
                 pair: None,
-                block_max_gas: Uint64::new(10000),
+                block_max_gas: Uint64::new(110_000),
             },
             &[],
             "note2",
