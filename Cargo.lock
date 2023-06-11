@@ -491,6 +491,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "polytone-listener"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "polytone",
+ "polytone-note",
+ "thiserror",
+]
+
+[[package]]
 name = "polytone-note"
 version = "0.1.0"
 dependencies = [
