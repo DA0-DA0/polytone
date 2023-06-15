@@ -9,7 +9,7 @@ members = [
 edition      = "2021"
 license      = "BSD-3"
 rust-version = "1.67"
-version      = "0.1.0"
+version      = "1.0.0"
 
 [profile.release]
 codegen-units    = 1
