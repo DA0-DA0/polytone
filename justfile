@@ -37,12 +37,7 @@ integrationtest: optimize
 # <https://stackoverflow.com/a/3162500>
 schema:
     start=$(pwd); \
-    for f in ./contracts/*; \
-    do \
-    echo "generating schema for ${f##*/}"; \
-    cd "$f" && cargo schema && cd "$start" \
-    ;done
-    for f in ./accessories/*; \
+    for f in ./contracts/**/*; \
     do \
     echo "generating schema for ${f##*/}"; \
     cd "$f" && cargo schema && cd "$start" \
