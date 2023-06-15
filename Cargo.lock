@@ -482,7 +482,7 @@ dependencies = [
 
 [[package]]
 name = "polytone"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -492,7 +492,7 @@ dependencies = [
 
 [[package]]
 name = "polytone-listener"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -507,7 +507,7 @@ dependencies = [
 
 [[package]]
 name = "polytone-note"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "polytone-proxy"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -536,7 +536,7 @@ dependencies = [
 
 [[package]]
 name = "polytone-tester"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "polytone-voice"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
