@@ -1,9 +1,11 @@
 [package]
 name         = "polytone-note"
 authors      = ["ekez <ekez@withoutdoing.com>"]
+description  = "Sends messages to be executed on other chains over IBC."
 edition      = { workspace = true }
 license      = { workspace = true }
 rust-version = { workspace = true }
+repository   = { workspace = true }
 version      = { workspace = true }
 
 [lib]

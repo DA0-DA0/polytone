@@ -1,8 +1,10 @@
 [package]
 name = "polytone-listener"
 authors = ["noah <noah@daodao.zone>"]
+description = "A contract that listens for Polytone callbacks."
 edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }
 

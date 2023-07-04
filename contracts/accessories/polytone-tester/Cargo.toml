@@ -1,8 +1,10 @@
 [package]
 name         = "polytone-tester"
 authors      = ["ekez <ekez@withoutdoing.com>"]
+description  = "A Polytone tester contract."
 edition      = { workspace = true }
 license      = { workspace = true }
+repository   = { workspace = true }
 rust-version = { workspace = true }
 version      = { workspace = true }
 

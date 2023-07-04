@@ -1,8 +1,10 @@
 [package]
 name         = "polytone-proxy"
 authors      = ["ekez <ekez@withoutdoing.com>"]
+description  = "An Interchain Account contract."
 edition      = { workspace = true }
 license      = { workspace = true }
+repository   = { workspace = true }
 rust-version = { workspace = true }
 version      = { workspace = true }
 
