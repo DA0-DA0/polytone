@@ -7,7 +7,8 @@ members = [
 
 [workspace.package]
 edition      = "2021"
-license      = "BSD-3"
+license      = "BSD-3-Clause"
+repository   = "https://github.com/DA0-DA0/polytone"
 rust-version = "1.67"
 version      = "1.0.0"
 
@@ -23,10 +24,10 @@ panic            = 'abort'
 rpath            = false
 
 [workspace.dependencies]
-polytone       = { path = "packages/polytone" }
-polytone-proxy = { path = "contracts/main/proxy" }
-polytone-note  = { path = "contracts/main/note" }
-polytone-voice = { path = "contracts/main/voice" }
+polytone       = { path = "packages/polytone", version = "1.0.0" }
+polytone-proxy = { path = "contracts/main/proxy", version = "1.0.0" }
+polytone-note  = { path = "contracts/main/note", version = "1.0.0" }
+polytone-voice = { path = "contracts/main/voice", version = "1.0.0" }
 
 cosmwasm-schema = "1.2.1"
 cosmwasm-std    = { version = "1.2.4", features = ["ibc3"] }
