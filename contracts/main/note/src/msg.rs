@@ -23,6 +23,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))] // cw-orch automatic
 pub enum ExecuteMsg {
     /// Performs the requested queries on the voice chain and returns
     /// a callback of Vec<QuerierResult>, or ACK-FAIL if unmarshalling
@@ -52,6 +53,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
+#[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))] // cw-orch automatic
 pub enum QueryMsg {
     /// This channel this note is currently connected to, or none if
     /// no channel is connected.

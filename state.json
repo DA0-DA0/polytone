@@ -1,0 +1,18 @@
+{
+  "juno": {
+    "juno-1": {
+      "code_ids": {
+        "polytone:note": 3175,
+        "polytone:proxy": 3176,
+        "polytone:voice": 3178
+      }
+    },
+    "uni-6": {
+      "code_ids": {
+        "polytone:note": 2517,
+        "polytone:proxy": 2518,
+        "polytone:voice": 2520
+      }
+    }
+  }
+}
