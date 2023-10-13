@@ -9,11 +9,8 @@ version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow.workspace = true
-
 cw-orch = { version="0.16.4", features=["daemon"] }
 
-ibc-relayer-types = "0.25.0"
 polytone-note = { version = "1.0.0", path = "../../contracts/main/note" }
 polytone-proxy = { version = "1.0.0", path = "../../contracts/main/proxy" }
 polytone-voice = { version = "1.0.0", path = "../../contracts/main/voice" }

@@ -807,7 +807,6 @@ dependencies = [
  "anyhow",
  "cw-orch",
  "env_logger",
- "ibc-relayer-types",
  "polytone-note",
  "polytone-proxy",
  "polytone-voice",
