@@ -17,4 +17,3 @@ polytone-voice = { version = "1.0.0", path = "../../contracts/main/voice" }
 
 [dev-dependencies]
 anyhow.workspace = true
-env_logger = "0.10.0"
