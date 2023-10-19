@@ -2,9 +2,9 @@
   "juno": {
     "juno-1": {
       "code_ids": {
-        "polytone:note": 3175,
-        "polytone:proxy": 3176,
-        "polytone:voice": 3178
+        "polytone:note": 3320,
+        "polytone:proxy": 3321,
+        "polytone:voice": 3322
       }
     },
     "uni-6": {
@@ -13,6 +13,27 @@
         "polytone:proxy": 2518,
         "polytone:voice": 2520
       }
+    }
+  },
+  "osmosis":{
+    "osmosis-1":{
+      "polytone:note": 126,
+      "polytone:proxy": 127,
+      "polytone:voice": 128
+
+    }
+  },
+  "stargaze":{
+    "stargaze-1":{
+      "polytone:note": 95,
+      "polytone:proxy": 96,
+      "polytone:voice": 97
+    }
+  },
+  "neutron":{
+    "neutron-1":{
+      "polytone:note": 230,
+      "polytone:proxy": 231
     }
   }
 }
