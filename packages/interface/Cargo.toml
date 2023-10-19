@@ -11,9 +11,9 @@ version.workspace = true
 [dependencies]
 cw-orch = { version="0.16.4", features=["daemon"] }
 
-polytone-note = { version = "1.0.0", path = "../../contracts/main/note" }
-polytone-proxy = { version = "1.0.0", path = "../../contracts/main/proxy" }
-polytone-voice = { version = "1.0.0", path = "../../contracts/main/voice" }
+polytone-note = { workspace = true }
+polytone-proxy = { workspace = true }
+polytone-voice = { workspace = true }
 
 [dev-dependencies]
 anyhow.workspace = true
