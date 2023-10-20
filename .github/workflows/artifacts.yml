@@ -3,7 +3,6 @@ name: artifact compiler
 on:
   workflow_dispatch:
   push:
-    branches: [main]
 
 jobs:
   release-artifacts:
