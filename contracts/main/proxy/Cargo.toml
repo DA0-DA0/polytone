@@ -39,7 +39,7 @@ cw-utils        = { workspace = true }
 cw2             = { workspace = true }
 thiserror       = { workspace = true }
 polytone        = { workspace = true }
-cw-orch = { version = "0.16.4", optional = true }
+cw-orch         = { workspace = true, optional = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

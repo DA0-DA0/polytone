@@ -67,11 +67,11 @@ impl<Chain: CwEnv> Deploy<Chain> for Polytone<Chain> {
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
         let mut polytone = Self::new(chain);
         // We register all the contracts default state
-        polytone.set_contracts_state();
+        polytone.set_contracts_state(None);
         Ok(polytone)
     }
 
-    fn deployed_state_file_path(&self) -> Option<String> {
+    fn deployed_state_file_path() -> Option<String> {
         let crate_path = env!("CARGO_MANIFEST_DIR");
         Some(
             PathBuf::from(crate_path)

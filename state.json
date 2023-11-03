@@ -1,4 +1,13 @@
 {
+  "archway": {
+    "archway-1": {
+      "code_ids": {
+        "polytone:note": 206,
+        "polytone:proxy": 208,
+        "polytone:voice": 207
+      }
+    }
+  },
   "juno": {
     "juno-1": {
       "code_ids": {
@@ -15,25 +24,30 @@
       }
     }
   },
-  "osmosis":{
-    "osmosis-1":{
-      "polytone:note": 126,
-      "polytone:proxy": 127,
-      "polytone:voice": 128
-
+  "neutron": {
+    "neutron-1": {
+      "code_ids": {
+        "polytone:note": 230,
+        "polytone:proxy": 231
+      }
     }
   },
-  "stargaze":{
-    "stargaze-1":{
-      "polytone:note": 95,
-      "polytone:proxy": 96,
-      "polytone:voice": 97
+  "osmosis": {
+    "osmosis-1": {
+      "code_ids": {
+        "polytone:note": 126,
+        "polytone:proxy": 127,
+        "polytone:voice": 128
+      }
     }
   },
-  "neutron":{
-    "neutron-1":{
-      "polytone:note": 230,
-      "polytone:proxy": 231
+  "stargaze": {
+    "stargaze-1": {
+      "code_ids": {
+        "polytone:note": 95,
+        "polytone:proxy": 96,
+        "polytone:voice": 97
+      }
     }
   }
 }
