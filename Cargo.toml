@@ -10,7 +10,7 @@ edition      = "2021"
 license      = "BSD-3-Clause"
 repository   = "https://github.com/DA0-DA0/polytone"
 rust-version = "1.67"
-version      = "1.0.0"
+version      = "1.0.1"
 
 [profile.release]
 codegen-units    = 1
@@ -30,7 +30,7 @@ polytone-note  = { path = "contracts/main/note", version = "1.0.0" }
 polytone-voice = { path = "contracts/main/voice", version = "1.0.0" }
 
 cosmwasm-schema = "1.2.1"
-cosmwasm-std    = { version = "1.2.4", features = ["ibc3"] }
+cosmwasm-std    = { version = "1.5.0", features = ["ibc3"] }
 cw-storage-plus = "1.0.1"
 cw-utils        = "1.0.1"
 cw2             = "1.0.1"
