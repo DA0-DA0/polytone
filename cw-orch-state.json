@@ -1,0 +1,120 @@
+{
+  "archway": {
+    "archway-1": {
+      "archway-1-->juno-1": {
+        "polytone:note": "archway127xg63gy0s8qhlk7matnypymp0cuww4yx87td87hp52f9lp7yadsw8n963"
+      },
+      "archway-1-->neutron-1": {
+        "polytone:note": "archway1sqaustkd60n6m2s2t82ml373wsyl6gag547h5n4r0spr96kuat3qrfdrx2"
+      },
+      "archway-1-->osmosis-1": {
+        "polytone:note": "archway1zla0cm4sjytmktj4skrdm00hlars6q4jgkeqz5wy0tlftzu494tsqpkhuj"
+      },
+      "archway-1-->phoenix-1": {
+        "polytone:note": "archway18hylzwtvx68m8pffctkkwe7d42jkaq682v2s450mk2qt8r0n530qjldw0d"
+      },
+      "archway-1-->stargaze-1": {
+        "polytone:note": "archway1x2rg8xe9cq6qgy7ejjs7stkkh7zmnd2ymdkygycf5l9dva2fvjussdyx4x"
+      },
+      "code_ids": {
+        "polytone:note": 206,
+        "polytone:proxy": 208,
+        "polytone:voice": 207
+      },
+      "juno-1-->archway-1": {
+        "polytone:voice": "archway16v6tzjhgt5v5mlfmh5x269vz5gc0t09flgzextspnkym6cc79m0qy0z40s"
+      },
+      "neutron-1-->archway-1": {
+        "polytone:voice": "archway1qr94yuptq5h0nj5xctzft3q33262j2ajsquh42tpe0lptpev6rkswtfld5"
+      },
+      "osmosis-1-->archway-1": {
+        "polytone:voice": "archway1c7vceg88kylv0u6lpqc6fejqkw50shg0mm84kacpkdkwtljked9q0kgkcy"
+      },
+      "phoenix-1-->archway-1": {
+        "polytone:voice": "archway1ge0zdux54pn8f234l203nvugl4xnsr6hgv3tyah2wwm8qgz4y6esfzpwgg"
+      },
+      "stargaze-1-->archway-1": {
+        "polytone:voice": "archway1hd4s3z4ga7f26eae4p44mp70dvr5my39d7l2qrh2hrl74jsv22dquc6h63"
+      }
+    }
+  },
+  "juno": {
+    "juno-1": {
+      "archway-1-->juno-1": {
+        "polytone:voice": "juno1zr8lfu9nxr62qhwllau8uanrlhwjamtfx58lda7fxwnakm4mvutqwu2f3c"
+      },
+      "code_ids": {
+        "polytone:note": 3320,
+        "polytone:proxy": 3321,
+        "polytone:voice": 3322
+      },
+      "juno-1-->archway-1": {
+        "polytone:note": "juno129y879p7fc7lwktj5c72cqrxyl6n9t4e3a9knr5mwjfc5algft0sw6ep29"
+      }
+    },
+    "uni-6": {
+      "code_ids": {
+        "polytone:note": 2517,
+        "polytone:proxy": 2518,
+        "polytone:voice": 2520
+      }
+    }
+  },
+  "neutron": {
+    "neutron-1": {
+      "code_ids": {
+        "polytone:note": 230,
+        "polytone:proxy": 231
+      },
+      "neutron-1-->archway-1": {
+        "polytone:note": "neutron1kprjz0qusrcxvvhfklw0krn7g6ze36hzjuuhmktkepeyx5shljdqflwe2m"
+      }
+    }
+  },
+  "osmosis": {
+    "osmosis-1": {
+      "archway-1-->osmosis-1": {
+        "polytone:voice": "osmo1kju3qsgcfwfuhqdrwm623xrf7hn3lmp2scaznxn75r3mlv36x4xsc7lnz2"
+      },
+      "code_ids": {
+        "polytone:note": 126,
+        "polytone:proxy": 127,
+        "polytone:voice": 128
+      },
+      "osmosis-1-->archway-1": {
+        "polytone:note": "osmo14528h5e3c9knxzp82tex0gehhwx2qmz7fm32ntk6yluas27aknssrqkled"
+      }
+    }
+  },
+  "stargaze": {
+    "stargaze-1": {
+      "archway-1-->stargaze-1": {
+        "polytone:voice": "stars18ug3f0c7cqz5y2k38z6perudyeggvzhsel9qe7xl5x88xzxmwvxsl4v2kq"
+      },
+      "code_ids": {
+        "polytone:note": 95,
+        "polytone:proxy": 96,
+        "polytone:voice": 97
+      },
+      "stargaze-1-->archway-1": {
+        "polytone:note": "stars1ny7xvq2l07sgxdrak4qzrcj8eszyk5cwx34fkdshw4gyv84nyeus9cuw45"
+      }
+    }
+  },
+  "terra2": {
+    "phoenix-1": {
+      "archway-1-->phoenix-1": {
+        "polytone:voice": "terra1k5evzuxqg649k32w0934epu4nv0lj906z4fv2a3lnemq85fe320srd4qn6"
+      },
+      "code_ids": {
+        "polytone:note": 2071,
+        "polytone:proxy": 2073,
+        "polytone:voice": 2072
+      },
+      "default": {},
+      "phoenix-1-->archway-1": {
+        "polytone:note": "terra1x366fdkmpd88fvtjq09ksupjjgre6fr08zulwn3qe8mfefxfd3jswdmy3x"
+      }
+    }
+  }
+}

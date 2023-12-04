@@ -75,7 +75,7 @@ impl<Chain: CwEnv> Deploy<Chain> for Polytone<Chain> {
         let crate_path = env!("CARGO_MANIFEST_DIR");
         Some(
             PathBuf::from(crate_path)
-                .join("state.json")
+                .join("cw-orch-state.json")
                 .display()
                 .to_string(),
         )
