@@ -19,6 +19,7 @@ target/
 # Build artifacts
 hash.txt
 contracts.txt
+artifacts/
 
 # code coverage
 tarpaulin-report.*
