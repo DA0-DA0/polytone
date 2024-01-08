@@ -23,10 +23,12 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))] // cw-orch automatic
 pub enum ExecuteMsg {
     /// Performs the requested queries on the voice chain and returns
     /// a callback of Vec<QuerierResult>, or ACK-FAIL if unmarshalling
     /// any of the query requests fails.
+    #[cfg_attr(feature = "interface", fn_name("ibc_query"))]
     Query {
         msgs: Vec<QueryRequest<Empty>>,
         callback: CallbackRequest,
@@ -43,6 +45,7 @@ pub enum ExecuteMsg {
     /// perform no additional actions, pass an empty list to
     /// `msgs`. Accounts are queryable via the `RemoteAddress {
     /// local_address }` query after they have been created.
+    #[cfg_attr(feature = "interface", fn_name("ibc_execute"))]
     Execute {
         msgs: Vec<CosmosMsg<Empty>>,
         callback: Option<CallbackRequest>,
@@ -52,6 +55,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
+#[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))] // cw-orch automatic
 pub enum QueryMsg {
     /// This channel this note is currently connected to, or none if
     /// no channel is connected.

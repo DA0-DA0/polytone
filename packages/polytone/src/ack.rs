@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_binary, to_binary, Binary, IbcAcknowledgement, SubMsgResponse, Uint64};
+use cosmwasm_std::{from_json, to_binary, Binary, IbcAcknowledgement, SubMsgResponse, Uint64};
 
 pub use crate::callbacks::Callback;
 use crate::callbacks::{ErrorResponse, ExecutionResponse};
@@ -47,7 +47,7 @@ pub fn ack_fail(err: String) -> Binary {
 /// the returned acknowledgement can not be parsed into an ACK,
 /// err(base64(ack)) is returned.
 pub fn unmarshal_ack(ack: &IbcAcknowledgement) -> Ack {
-    from_binary(&ack.data).unwrap_or_else(|e| {
+    from_json(&ack.data).unwrap_or_else(|e| {
         Callback::FatalError(format!(
             "error unmarshalling ack ({}): {}",
             ack.data.to_base64(),

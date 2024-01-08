@@ -16,6 +16,7 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # disables #[entry_point] (i.e. instantiate/execute/query) export
 library = []
+interface = ["dep:cw-orch"]
 
 # This is here inspite of the warnings to make sure it is not missed
 # if the contract is taken out of the workspace
@@ -38,6 +39,7 @@ cw-utils        = { workspace = true }
 cw2             = { workspace = true }
 thiserror       = { workspace = true }
 polytone        = { workspace = true }
+cw-orch         = { workspace = true, optional = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
