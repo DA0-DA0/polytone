@@ -31,7 +31,7 @@ pub fn connect(msg: &IbcChannelConnectMsg, extensions: &[&str]) -> Result<(), Ha
             counterparty_version,
         } => {
             let proposed_version: Vec<String> =
-                from_json(&Binary::from_base64(counterparty_version).unwrap()).unwrap();
+                from_json(Binary::from_base64(counterparty_version).unwrap()).unwrap();
             let subseteq_violation = extensions
                 .iter()
                 .find(|e| !proposed_version.contains(&e.to_string()));
