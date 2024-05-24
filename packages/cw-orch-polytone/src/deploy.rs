@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{PolytoneNote, PolytoneProxy, PolytoneVoice};
 use cw_orch::{
-    deploy::Deploy,
+    contract::Deploy,
     prelude::{ContractInstance, CwEnv, CwOrchError, CwOrchInstantiate, CwOrchUpload},
 };
 
