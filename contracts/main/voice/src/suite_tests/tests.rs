@@ -16,7 +16,7 @@ fn test_update() {
     let proxy_code_new = suite.store_voice_contract();
 
     suite
-        .update(Addr::unchecked(CREATOR_ADDR), proxy_code_new, 111_000)
+        .update(Addr::unchecked(CREATOR_ADDR), proxy_code_new, 111_000, 32)
         .unwrap();
 
     // assert that both fields updated succesfully
@@ -31,7 +31,7 @@ fn test_query_block_max_gas() {
     suite.assert_block_max_gas(110_000);
 
     suite
-        .update(Addr::unchecked(CREATOR_ADDR), suite.voice_code, 111_000)
+        .update(Addr::unchecked(CREATOR_ADDR), suite.voice_code, 111_000, 32)
         .unwrap();
 
     suite.assert_block_max_gas(111_000);
@@ -44,10 +44,23 @@ fn test_query_proxy_code_id() {
     suite.assert_proxy_code(9999);
 
     suite
-        .update(Addr::unchecked(CREATOR_ADDR), 1, 110_000)
+        .update(Addr::unchecked(CREATOR_ADDR), 1, 110_000, 32)
         .unwrap();
 
     suite.assert_proxy_code(1);
+}
+
+#[test]
+fn test_query_contract_addr_len() {
+    let mut suite = SuiteBuilder::default().build();
+
+    suite.assert_contract_addr_len(32);
+
+    suite
+        .update(Addr::unchecked(CREATOR_ADDR), 1, 110_000, 20)
+        .unwrap();
+
+    suite.assert_contract_addr_len(20);
 }
 
 #[test]
@@ -71,7 +84,7 @@ fn test_migrate_validation() {
     let mut suite = SuiteBuilder::default().build();
 
     let err = suite
-        .update(Addr::unchecked(CREATOR_ADDR), 0, 110_000)
+        .update(Addr::unchecked(CREATOR_ADDR), 0, 110_000, 32)
         .unwrap_err()
         .downcast::<ContractError>()
         .unwrap();
@@ -79,7 +92,7 @@ fn test_migrate_validation() {
     assert_eq!(err, ContractError::CodeIdCantBeZero);
 
     let err = suite
-        .update(Addr::unchecked(CREATOR_ADDR), 1, 0)
+        .update(Addr::unchecked(CREATOR_ADDR), 1, 0, 32)
         .unwrap_err()
         .downcast::<ContractError>()
         .unwrap();

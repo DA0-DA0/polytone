@@ -24,4 +24,7 @@ pub enum ContractError {
 
     #[error("ACK_GAS_NEEDED can't be higher then BLOCK_MAX_GAS")]
     GasLimitsMismatch,
+
+    #[error("Contract address length can't be zero")]
+    ContractAddrLenCantBeZero,
 }

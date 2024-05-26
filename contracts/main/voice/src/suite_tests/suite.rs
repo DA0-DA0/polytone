@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Empty, Uint64};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
-use crate::msg::QueryMsg::{BlockMaxGas, ProxyCodeId};
+use crate::msg::QueryMsg::{BlockMaxGas, ContractAddrLen, ProxyCodeId};
 use crate::msg::{InstantiateMsg, MigrateMsg};
 
 pub const CREATOR_ADDR: &str = "creator";
@@ -33,6 +33,7 @@ impl Default for SuiteBuilder {
             instantiate: InstantiateMsg {
                 proxy_code_id: Uint64::new(9999),
                 block_max_gas: Uint64::new(110_000),
+                contract_addr_len: None,
             },
         }
     }
@@ -95,6 +96,13 @@ impl Suite {
             .query_wasm_smart(&self.voice_address, &ProxyCodeId)
             .unwrap()
     }
+
+    pub fn query_contract_addr_len(&self) -> u8 {
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.voice_address, &ContractAddrLen)
+            .unwrap()
+    }
 }
 
 // migrate
@@ -104,6 +112,7 @@ impl Suite {
         sender: Addr,
         contract_code_id: u64,
         block_max_gas: u64,
+        contract_addr_len: u8,
     ) -> anyhow::Result<AppResponse> {
         self.app.migrate_contract(
             sender,
@@ -111,6 +120,7 @@ impl Suite {
             &MigrateMsg::WithUpdate {
                 proxy_code_id: contract_code_id.into(),
                 block_max_gas: block_max_gas.into(),
+                contract_addr_len: contract_addr_len,
             },
             self.voice_code,
         )
@@ -126,6 +136,11 @@ impl Suite {
 
     pub fn assert_proxy_code(&self, val: u64) {
         let curr = self.query_proxy_code_id();
+        assert_eq!(curr, val);
+    }
+
+    pub fn assert_contract_addr_len(&self, val: u8) {
+        let curr = self.query_contract_addr_len();
         assert_eq!(curr, val);
     }
 }
