@@ -41,6 +41,9 @@ pub fn instantiate(
     if contract_addr_len == 0 {
         return Err(ContractError::ContractAddrLenCantBeZero);
     }
+    if contract_addr_len > 32 {
+        return Err(ContractError::ContractAddrLenCantBeGreaterThan32);
+    }
 
     PROXY_CODE_ID.save(deps.storage, &msg.proxy_code_id.u64())?;
     BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
@@ -221,6 +224,9 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
 
             if contract_addr_len == 0 {
                 return Err(ContractError::ContractAddrLenCantBeZero);
+            }
+            if contract_addr_len > 32 {
+                return Err(ContractError::ContractAddrLenCantBeGreaterThan32);
             }
 
             // update the proxy code ID, block max gas, and contract addr len

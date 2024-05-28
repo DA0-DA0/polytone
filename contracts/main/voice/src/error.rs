@@ -27,4 +27,7 @@ pub enum ContractError {
 
     #[error("Contract address length can't be zero")]
     ContractAddrLenCantBeZero,
+
+    #[error("Contract address length can't be greater than 32")]
+    ContractAddrLenCantBeGreaterThan32,
 }

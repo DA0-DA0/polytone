@@ -80,6 +80,22 @@ fn test_gas_validation() {
 }
 
 #[test]
+#[should_panic]
+fn test_contract_addr_len_min_validation() {
+    SuiteBuilder::default()
+        .with_contract_addr_len(Some(0))
+        .build();
+}
+
+#[test]
+#[should_panic]
+fn test_contract_addr_len_max_validation() {
+    SuiteBuilder::default()
+        .with_contract_addr_len(Some(33))
+        .build();
+}
+
+#[test]
 fn test_migrate_validation() {
     let mut suite = SuiteBuilder::default().build();
 
@@ -98,4 +114,20 @@ fn test_migrate_validation() {
         .unwrap();
 
     assert_eq!(err, ContractError::GasLimitsMismatch);
+
+    let err = suite
+        .update(Addr::unchecked(CREATOR_ADDR), 1, 110_000, 0)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(err, ContractError::ContractAddrLenCantBeZero);
+
+    let err = suite
+        .update(Addr::unchecked(CREATOR_ADDR), 1, 110_000, 33)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(err, ContractError::ContractAddrLenCantBeGreaterThan32);
 }

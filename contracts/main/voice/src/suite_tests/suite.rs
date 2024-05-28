@@ -73,6 +73,11 @@ impl SuiteBuilder {
         self.instantiate.proxy_code_id = code_id;
         self
     }
+
+    pub fn with_contract_addr_len(mut self, len: Option<u8>) -> Self {
+        self.instantiate.contract_addr_len = len;
+        self
+    }
 }
 
 impl Suite {
@@ -120,7 +125,7 @@ impl Suite {
             &MigrateMsg::WithUpdate {
                 proxy_code_id: contract_code_id.into(),
                 block_max_gas: block_max_gas.into(),
-                contract_addr_len: contract_addr_len,
+                contract_addr_len,
             },
             self.voice_code,
         )
