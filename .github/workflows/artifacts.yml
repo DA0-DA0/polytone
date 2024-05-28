@@ -5,8 +5,9 @@ permissions:
   contents: write
 
 on:
-  workflow_dispatch:
   push:
+    tags:
+      - "v*"
     branches:
       - main
 
