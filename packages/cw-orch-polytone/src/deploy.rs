@@ -46,6 +46,7 @@ impl<Chain: CwEnv> Deploy<Chain> for Polytone<Chain> {
             &polytone_voice::msg::InstantiateMsg {
                 proxy_code_id: deployment.proxy.code_id()?.into(),
                 block_max_gas: MAX_BLOCK_GAS.into(),
+                contract_addr_len: None,
             },
             None,
             None,

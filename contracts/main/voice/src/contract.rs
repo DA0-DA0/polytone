@@ -1,9 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, instantiate2_address, to_json_binary, to_json_vec, Binary, CodeInfoResponse,
-    ContractResult, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, SystemResult,
-    Uint64, WasmMsg,
+    from_json, instantiate2_address, to_json_binary, to_json_vec, Binary, CanonicalAddr,
+    CodeInfoResponse, ContractResult, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    SystemResult, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 
@@ -13,7 +13,9 @@ use polytone::ibc::{Msg, Packet};
 use crate::error::ContractError;
 use crate::ibc::{ACK_GAS_NEEDED, REPLY_FORWARD_DATA};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{BLOCK_MAX_GAS, PROXY_CODE_ID, SENDER_TO_PROXY};
+use crate::state::{
+    SenderInfo, BLOCK_MAX_GAS, CONTRACT_ADDR_LEN, PROXY_CODE_ID, PROXY_TO_SENDER, SENDER_TO_PROXY,
+};
 
 const CONTRACT_NAME: &str = "crates.io:polytone-voice";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -35,13 +37,23 @@ pub fn instantiate(
         return Err(ContractError::GasLimitsMismatch);
     }
 
+    let contract_addr_len = msg.contract_addr_len.unwrap_or(32);
+    if contract_addr_len == 0 {
+        return Err(ContractError::ContractAddrLenCantBeZero);
+    }
+    if contract_addr_len > 32 {
+        return Err(ContractError::ContractAddrLenCantBeGreaterThan32);
+    }
+
     PROXY_CODE_ID.save(deps.storage, &msg.proxy_code_id.u64())?;
     BLOCK_MAX_GAS.save(deps.storage, &msg.block_max_gas.u64())?;
+    CONTRACT_ADDR_LEN.save(deps.storage, &contract_addr_len)?;
 
     Ok(Response::default()
         .add_attribute("method", "instantiate")
         .add_attribute("proxy_code_id", msg.proxy_code_id)
-        .add_attribute("block_max_gas", msg.block_max_gas))
+        .add_attribute("block_max_gas", msg.block_max_gas)
+        .add_attribute("contract_addr_len", contract_addr_len.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -104,16 +116,32 @@ pub fn execute(
                             let contract =
                                 deps.api.addr_canonicalize(env.contract.address.as_str())?;
                             let code_id = PROXY_CODE_ID.load(deps.storage)?;
+                            let addr_len = CONTRACT_ADDR_LEN.load(deps.storage)?;
                             let CodeInfoResponse { checksum, .. } =
                                 deps.querier.query_wasm_code_info(code_id)?;
                             let salt = salt(&connection_id, &counterparty_port, &sender);
-                            let proxy = deps.api.addr_humanize(&instantiate2_address(
-                                &checksum, &contract, &salt,
-                            )?)?;
+                            let init2_addr_data: CanonicalAddr =
+                                instantiate2_address(&checksum, &contract, &salt)?.to_vec()
+                                    [0..addr_len as usize]
+                                    .into();
+                            let proxy = deps.api.addr_humanize(&init2_addr_data)?;
                             SENDER_TO_PROXY.save(
                                 deps.storage,
-                                (connection_id, counterparty_port, sender.clone()),
+                                (
+                                    connection_id.clone(),
+                                    counterparty_port.clone(),
+                                    sender.clone(),
+                                ),
                                 &proxy,
+                            )?;
+                            PROXY_TO_SENDER.save(
+                                deps.storage,
+                                proxy.clone(),
+                                &SenderInfo {
+                                    connection_id,
+                                    remote_port: counterparty_port,
+                                    remote_sender: sender.clone(),
+                                },
                             )?;
                             (
                                 Some(WasmMsg::Instantiate2 {
@@ -171,6 +199,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::BlockMaxGas => to_json_binary(&BLOCK_MAX_GAS.load(deps.storage)?),
         QueryMsg::ProxyCodeId => to_json_binary(&PROXY_CODE_ID.load(deps.storage)?),
+        QueryMsg::ContractAddrLen => to_json_binary(&CONTRACT_ADDR_LEN.load(deps.storage)?),
+        QueryMsg::SenderInfoForProxy { proxy } => {
+            to_json_binary(&PROXY_TO_SENDER.load(deps.storage, deps.api.addr_validate(&proxy)?)?)
+        }
     }
 }
 
@@ -180,6 +212,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
         MigrateMsg::WithUpdate {
             proxy_code_id,
             block_max_gas,
+            contract_addr_len,
         } => {
             if proxy_code_id.is_zero() {
                 return Err(ContractError::CodeIdCantBeZero);
@@ -189,14 +222,23 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 return Err(ContractError::GasLimitsMismatch);
             }
 
-            // update the proxy code ID and block max gas
+            if contract_addr_len == 0 {
+                return Err(ContractError::ContractAddrLenCantBeZero);
+            }
+            if contract_addr_len > 32 {
+                return Err(ContractError::ContractAddrLenCantBeGreaterThan32);
+            }
+
+            // update the proxy code ID, block max gas, and contract addr len
             PROXY_CODE_ID.save(deps.storage, &proxy_code_id.u64())?;
             BLOCK_MAX_GAS.save(deps.storage, &block_max_gas.u64())?;
+            CONTRACT_ADDR_LEN.save(deps.storage, &contract_addr_len)?;
 
             Ok(Response::default()
                 .add_attribute("method", "migrate_with_update")
                 .add_attribute("proxy_code_id", proxy_code_id)
-                .add_attribute("block_max_gas", block_max_gas))
+                .add_attribute("block_max_gas", block_max_gas)
+                .add_attribute("contract_addr_len", contract_addr_len.to_string()))
         }
     }
 }
