@@ -12,6 +12,8 @@ import (
 // these files every once and a while.
 
 type NoteInstantiate struct {
+	Controller  string `json:"controller,omitempty"`
+	BlockMaxGas uint64 `json:"block_max_gas,string"`
 }
 
 type VoiceInstantiate struct {
@@ -65,8 +67,45 @@ type CallbackMessage struct {
 }
 
 type Callback struct {
-	Success []string `json:"success,omitempty"`
-	Error   string   `json:"error,omitempty"`
+	Execute    CallbackDataExecute `json:"execute,omitempty"`
+	Query      CallbackDataQuery   `json:"query,omitempty"`
+	FatalError string              `json:"fatal_error,omitempty"`
+}
+
+type CallbackDataQuery struct {
+	Ok  [][]byte      `json:"ok,omitempty"`
+	Err ErrorResponse `json:"err,omitempty"`
+}
+
+type CallbackDataExecute struct {
+	Ok  ExecutionResponse `json:"ok,omitempty"`
+	Err string            `json:"err,omitempty"`
+}
+type ExecutionResponse struct {
+	ExecutedBy string           `json:"executed_by"`
+	Result     []SubMsgResponse `json:"result"`
+}
+
+type ErrorResponse struct {
+	MessageIndex uint64 `json:"message_index,string"`
+	Error        string `json:"error"`
+}
+
+type SubMsgResponse struct {
+	Events []Event `json:"events"`
+	Data   []byte  `json:"data,omitempty"`
+}
+
+type Events []Event
+type Event struct {
+	Type       string          `json:"type"`
+	Attributes EventAttributes `json:"attributes"`
+}
+
+type EventAttributes []EventAttribute
+type EventAttribute struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type Empty struct{}

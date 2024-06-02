@@ -188,7 +188,9 @@ func (s *Suite) SetupChain(chain *SuiteChain) {
 		s.t.Fatal(err)
 	}
 
-	chain.Note = s.Instantiate(cc, user, noteId, NoteInstantiate{})
+	chain.Note = s.Instantiate(cc, user, noteId, NoteInstantiate{
+		BlockMaxGas: 100_000_000,
+	})
 	chain.Voice = s.Instantiate(cc, user, voiceId, VoiceInstantiate{
 		ProxyCodeId:     uint64(proxyUint),
 		BlockMaxGas:     100_000_000,
@@ -261,7 +263,7 @@ func (s *Suite) QueryOpenChannels(chain *SuiteChain) []ibc.ChannelOutput {
 	return s.QueryChannelsInState(chain, CHANNEL_STATE_OPEN)
 }
 
-func (s *Suite) RoundtripExecute(note string, chain *SuiteChain, msgs []w.CosmosMsg) (Callback, error) {
+func (s *Suite) RoundtripExecute(note string, chain *SuiteChain, msgs ...w.CosmosMsg) (CallbackDataExecute, error) {
 	msg := NoteExecuteMsg{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
@@ -270,12 +272,13 @@ func (s *Suite) RoundtripExecute(note string, chain *SuiteChain, msgs []w.Cosmos
 			Msg:      "aGVsbG8K",
 		},
 	}
-	return s.RoundtripMessage(note, chain, NoteExecute{
+	callback, err := s.RoundtripMessage(note, chain, NoteExecute{
 		Execute: &msg,
 	})
+	return callback.Execute, err
 }
 
-func (s *Suite) RoundtripQuery(note string, chain *SuiteChain, msgs []w.CosmosMsg) (Callback, error) {
+func (s *Suite) RoundtripQuery(note string, chain *SuiteChain, msgs ...w.CosmosMsg) (CallbackDataQuery, error) {
 	msg := NoteQuery{
 		Msgs:           msgs,
 		TimeoutSeconds: 100,
@@ -284,9 +287,10 @@ func (s *Suite) RoundtripQuery(note string, chain *SuiteChain, msgs []w.CosmosMs
 			Msg:      "aGVsbG8K",
 		},
 	}
-	return s.RoundtripMessage(note, chain, NoteExecute{
+	callback, err := s.RoundtripMessage(note, chain, NoteExecute{
 		Query: &msg,
 	})
+	return callback.Query, err
 }
 
 func (s *Suite) RoundtripMessage(note string, chain *SuiteChain, msg NoteExecute) (Callback, error) {
