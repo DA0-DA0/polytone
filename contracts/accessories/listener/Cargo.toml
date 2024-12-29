@@ -13,7 +13,6 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
 # disables #[entry_point] (i.e. instantiate/execute/query) export
 library = []
 

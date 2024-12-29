@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo, Response,
-    StdResult,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcTimeout, MessageInfo,
+    Response, StdResult,
 };
 use cw2::set_contract_version;
 use polytone::callbacks::CallbackRequestType;
@@ -103,17 +103,20 @@ pub fn execute(
         &info.sender,
     )?;
 
+    let send_packet_msg: CosmosMsg = IbcMsg::SendPacket {
+        channel_id,
+        data: to_json_binary(&ibc::Packet {
+            sender: info.sender.into_string(),
+            msg,
+        })
+        .expect("msgs are known to be serializable"),
+        timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(timeout_seconds.u64())),
+    }
+    .into();
+
     Ok(Response::default()
         .add_attribute("method", "execute")
-        .add_message(IbcMsg::SendPacket {
-            channel_id,
-            data: to_json_binary(&ibc::Packet {
-                sender: info.sender.into_string(),
-                msg,
-            })
-            .expect("msgs are known to be serializable"),
-            timeout: IbcTimeout::with_timestamp(env.block.time.plus_seconds(timeout_seconds.u64())),
-        }))
+        .add_message(send_packet_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

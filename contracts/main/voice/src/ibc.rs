@@ -1,13 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_json, to_json_binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg,
+    from_json, to_json_binary, Binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg,
     IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcPacketAckMsg,
     IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, Reply, Response, SubMsg,
-    SubMsgResult, WasmMsg,
+    SubMsgResponse, SubMsgResult, WasmMsg,
 };
 
-use cw_utils::{parse_reply_execute_data, MsgExecuteContractResponse};
+use cw_utils::{parse_execute_response_data, MsgExecuteContractResponse, ParseReplyError};
 use polytone::{
     ack::{ack_execute_fail, ack_fail},
     callbacks::Callback,
@@ -84,7 +84,7 @@ pub fn ibc_packet_receive(
     let connection_id = CHANNEL_TO_CONNECTION
         .load(deps.storage, msg.packet.dest.channel_id.clone())
         .expect("handshake sets mapping");
-    Ok(IbcReceiveResponse::default()
+    Ok(IbcReceiveResponse::without_ack()
         .add_attribute("method", "ibc_packet_receive")
         .add_attribute("connection_id", connection_id.as_str())
         .add_attribute("channel_id", msg.packet.dest.channel_id.as_str())
@@ -110,6 +110,7 @@ pub fn ibc_packet_receive(
                     - ACK_GAS_NEEDED,
             ),
             reply_on: cosmwasm_std::ReplyOn::Always,
+            payload: Binary::default(),
         }))
 }
 
@@ -120,8 +121,14 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
             SubMsgResult::Err(e) => Response::default()
                 .add_attribute("ack_error", &e)
                 .set_data(ack_fail(e)),
-            SubMsgResult::Ok(_) => {
-                let data = parse_reply_execute_data(msg.clone())
+            SubMsgResult::Ok(response) => {
+                let SubMsgResponse { data: Some(b), .. } = response else {
+                    return Err(ContractError::Parse(ParseReplyError::SubMsgFailure(
+                        "failed to get data".to_string(),
+                    )));
+                };
+
+                let data = parse_execute_response_data(&b)
                     .expect("execution succeeded")
                     .data
                     .expect("reply_forward_data sets data");
@@ -139,8 +146,14 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
             // percolate the data up so we do so ourselves. Because we
             // don't reply on instantiation, the data here is the
             // result of executing messages on the proxy.
-            SubMsgResult::Ok(_) => {
-                let MsgExecuteContractResponse { data } = parse_reply_execute_data(msg)?;
+            SubMsgResult::Ok(r) => {
+                let SubMsgResponse { data: Some(b), .. } = r else {
+                    return Err(ContractError::Parse(ParseReplyError::SubMsgFailure(
+                        "failed to get data".to_string(),
+                    )));
+                };
+
+                let MsgExecuteContractResponse { data } = parse_execute_response_data(&b)?;
                 let response =
                     Response::default().add_attribute("method", "reply_forward_data_success");
                 Ok(match data {

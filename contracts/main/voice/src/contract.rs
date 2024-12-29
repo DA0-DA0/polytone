@@ -119,10 +119,11 @@ pub fn execute(
                             let addr_len = CONTRACT_ADDR_LEN.load(deps.storage)?;
                             let CodeInfoResponse { checksum, .. } =
                                 deps.querier.query_wasm_code_info(code_id)?;
+
                             let salt = salt(&connection_id, &counterparty_port, &sender);
                             let init2_addr_data: CanonicalAddr =
-                                instantiate2_address(&checksum, &contract, &salt)?.to_vec()
-                                    [0..addr_len as usize]
+                                instantiate2_address(&checksum.as_slice(), &contract, &salt)?
+                                    .to_vec()[0..addr_len as usize]
                                     .into();
                             let proxy = deps.api.addr_humanize(&init2_addr_data)?;
                             SENDER_TO_PROXY.save(
