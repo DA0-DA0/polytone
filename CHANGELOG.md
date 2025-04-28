@@ -8,13 +8,23 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-04-28
+
+### Fixed
+
+- Removed `staking` feature from `cosmwasm-std` dependency.
+
+### Changed
+
+- Use `optimizer:0.16.1` to build the contracts.
+
 ## [1.1.0] - 2024-05-28
 
 ### Added
 
 - Support configuring contract address lengths less than the default 32 bytes.
 
-### Fixes
+### Fixed
 
 - Updated some dependencies and replaced deprecated functions.
 
